@@ -1,9 +1,10 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server'
+import { getSupabaseClient } from '@/lib/getSupabaseClient';
 
 export async function GET(request) {
-  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+  const supabase = getSupabaseClient();
+  if (!supabase) return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
   const { userId } = await auth()
   
   // 获取公共标签和用户私有标签
@@ -21,7 +22,8 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+  const supabase = getSupabaseClient();
+  if (!supabase) return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
   const { userId } = await auth();
 
   try {
@@ -50,7 +52,8 @@ export async function POST(request) {
 }
 
 export async function DELETE(request) {
-  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+  const supabase = getSupabaseClient();
+  if (!supabase) return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
   const { userId } = await auth();
   
   try {
@@ -95,7 +98,8 @@ export async function DELETE(request) {
 }
 
 export async function PATCH(request) {
-  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+  const supabase = getSupabaseClient();
+  if (!supabase) return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
   const { userId } = await auth();
   
   try {
@@ -140,4 +144,4 @@ export async function PATCH(request) {
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-} 
+}

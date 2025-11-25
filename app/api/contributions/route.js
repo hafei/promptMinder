@@ -1,8 +1,9 @@
-import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server';
+import { getSupabaseClient } from '@/lib/getSupabaseClient';
 
 export async function POST(request) {
-  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+  const supabase = getSupabaseClient();
+  if (!supabase) return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
 
   try {
     const { title, role, content, contributorEmail, contributorName } = await request.json();
@@ -63,8 +64,9 @@ export async function POST(request) {
 
 // 获取贡献列表 - 仅供管理员使用
 export async function GET(request) {
-  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
-  
+  const supabase = getSupabaseClient();
+  if (!supabase) return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
+
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') || 'pending';
@@ -124,4 +126,4 @@ export async function GET(request) {
       error: 'Internal server error' 
     }, { status: 500 });
   }
-} 
+}

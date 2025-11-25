@@ -1,10 +1,14 @@
-import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server';
+import { getSupabaseClient } from '@/lib/getSupabaseClient';
 
 export async function GET(request, { params }) {
   const { id } = params;
-  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
-  
+  const supabase = getSupabaseClient();
+
+  if (!supabase) {
+    return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
+  }
+
   // First, get the requested prompt
   const { data: prompt, error: promptError } = await supabase
     .from('prompts')
@@ -38,4 +42,4 @@ export async function GET(request, { params }) {
   prompt.versions = versions || [];
 
   return NextResponse.json(prompt);
-} 
+}

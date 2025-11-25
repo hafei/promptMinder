@@ -3,13 +3,24 @@ import { createClient } from '@supabase/supabase-js';
 import sharp from 'sharp';
 
 // 初始化 Supabase 客户端
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY,
-);
+// const supabase = createClient(
+//   process.env.SUPABASE_URL,
+//   process.env.SUPABASE_ANON_KEY,
+// );
 
 export async function POST(request) {
   try {
+    // Lazily initialize Supabase client so module evaluation doesn't require env vars at build time
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('Supabase is not configured: SUPABASE_URL or SUPABASE_ANON_KEY is missing');
+      return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
     const formData = await request.formData();
     const file = formData.get('image');
     
@@ -105,4 +116,4 @@ export async function POST(request) {
     console.error('Error uploading file:', error);
     return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 });
   }
-} 
+}

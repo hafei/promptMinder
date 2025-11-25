@@ -1,10 +1,11 @@
-import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server';
+import { getSupabaseClient } from '@/lib/getSupabaseClient';
 
 // 获取单个贡献详情
 export async function GET(request, { params }) {
-  const { id } = await params;
-  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+  const { id } = params;
+  const supabase = getSupabaseClient();
+  if (!supabase) return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
 
   try {
     const { data: contribution, error } = await supabase
@@ -27,12 +28,13 @@ export async function GET(request, { params }) {
 
 // 更新贡献状态（审核）
 export async function PATCH(request, { params }) {
-  const { id } = await params;
-  
+  const { id } = params;
+
   // 从请求头获取管理员邮箱（由前端发送）
   const adminEmail = request.headers.get('x-admin-email');
-  
-  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+
+  const supabase = getSupabaseClient();
+  if (!supabase) return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
 
   try {
     const { status, adminNotes, publishToPrompts } = await request.json();
@@ -121,8 +123,9 @@ export async function PATCH(request, { params }) {
 
 // 删除贡献
 export async function DELETE(request, { params }) {
-  const { id } = await params;
-  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+  const { id } = params;
+  const supabase = getSupabaseClient();
+  if (!supabase) return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
 
   try {
     // 检查贡献是否存在
@@ -153,4 +156,4 @@ export async function DELETE(request, { params }) {
     console.error('Server error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-} 
+}

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseClient } from '@/lib/getSupabaseClient';
 
 const parsePromptsFromFile = (filePath, language) => {
     const markdownContent = fs.readFileSync(filePath, 'utf-8');
@@ -65,27 +65,28 @@ export async function GET(request) {
 
         // 2. 从数据库获取已发布的贡献提示词
         try {
-            const supabase = createClient(
-                process.env.SUPABASE_URL,
-                process.env.SUPABASE_ANON_KEY
-            );
+            const supabase = getSupabaseClient();
+            if (!supabase) {
+                // Supabase not configured at build-time; skip DB-sourced contributions
+                console.warn('Supabase not configured; skipping published contributions fetch');
+            } else {
+                const { data: publishedContributions, error } = await supabase
+                    .from('prompt_contributions')
+                    .select('title, role_category, content')
+                    .not('published_prompt_id', 'is', null)
+                    .eq('status', 'approved');
 
-            const { data: publishedContributions, error } = await supabase
-                .from('prompt_contributions')
-                .select('title, role_category, content')
-                .not('published_prompt_id', 'is', null)
-                .eq('status', 'approved');
+                if (!error && publishedContributions) {
+                    // 将数据库中的贡献转换为与 markdown 相同的格式
+                    const contributionPrompts = publishedContributions.map(contrib => ({
+                        category: language === 'zh' ? '社区贡献' : 'Community Contributions',
+                        role: contrib.role_category,
+                        prompt: contrib.content
+                    }));
 
-            if (!error && publishedContributions) {
-                // 将数据库中的贡献转换为与 markdown 相同的格式
-                const contributionPrompts = publishedContributions.map(contrib => ({
-                    category: language === 'zh' ? '社区贡献' : 'Community Contributions',
-                    role: contrib.role_category,
-                    prompt: contrib.content
-                }));
-
-                // 合并两个来源的提示词
-                allPrompts = [...allPrompts, ...contributionPrompts];
+                    // 合并两个来源的提示词
+                    allPrompts = [...allPrompts, ...contributionPrompts];
+                }
             }
         } catch (dbError) {
             console.error('Error fetching published contributions:', dbError);
@@ -116,4 +117,4 @@ export async function GET(request) {
         console.error('Error in public prompts API:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-} 
+}

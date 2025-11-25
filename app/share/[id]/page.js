@@ -1,13 +1,25 @@
-import { createClient } from '@supabase/supabase-js';
 import SharePromptDetailClient from './SharePromptDetailClient';
 import { notFound } from 'next/navigation';
 
-// Initialize Supabase client
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Lazy helper to create supabase client at runtime instead of module eval
+function getSupabaseClient() {
+  const { createClient } = require('@supabase/supabase-js');
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseKey) {
+    return null;
+  }
+  return createClient(supabaseUrl, supabaseKey);
+}
 
 async function getPrompt(id) {
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    // If supabase isn't configured, return null so callers handle notFound gracefully
+    console.error('Supabase not configured; cannot fetch prompt');
+    return null;
+  }
+
   const { data: prompt, error } = await supabase
     .from('prompts')
     .select('*')
@@ -107,4 +119,3 @@ export default async function SharePromptPage({ params }) {
     </>
   );
 }
- 
