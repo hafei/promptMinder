@@ -189,9 +189,10 @@ services:
   # PromptMinder 应用
   # =====================================================
   web:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
+    image: promptminder:0.1.0
     restart: unless-stopped
     depends_on:
       db:
