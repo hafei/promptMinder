@@ -200,7 +200,7 @@ git pull
 docker compose up -d --build web
 ```
 
-## �� 文件结构
+## 文件结构
 
 ```
 promptMinder/
@@ -215,4 +215,11 @@ promptMinder/
 │       └── kong.yml        # Kong 网关配置
 └── scripts/
     └── deploy.sh           # 一键部署脚本
+```
+
+```bash
+docker build -t promptminder:0.1.0 .
+
+
+docker-compose up -d --build
 ```

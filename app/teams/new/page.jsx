@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,6 +44,7 @@ export default function CreateTeamPage() {
     description: "",
   });
   const [submitting, setSubmitting] = useState(false);
+  const [maxTeams, setMaxTeams] = useState(2);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -87,6 +89,17 @@ export default function CreateTeamPage() {
     }
   };
 
+  useEffect(() => {
+    let mounted = true
+    fetch('/api/config')
+      .then((res) => res.json())
+      .then((data) => {
+        if (mounted && data?.maxTeamsPerUser) setMaxTeams(Number(data.maxTeamsPerUser))
+      })
+      .catch(() => {})
+    return () => { mounted = false }
+  }, [])
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <div className="container mx-auto max-w-2xl px-4 py-12">
@@ -114,14 +127,14 @@ export default function CreateTeamPage() {
             </p>
           </CardHeader>
           
-          {teams.filter(m => m.role === 'owner').length >= 2 && (
+          {teams.filter(m => m.role === 'owner').length >= maxTeams && (
             <div className="px-8 pb-4">
               <div className="rounded-md bg-destructive/15 p-4 text-sm text-destructive">
                 <p className="font-medium">
                   {safeT.createTeamPage?.limitReachedTitle || '无法创建团队'}
                 </p>
                 <p className="mt-1">
-                  {safeT.createTeamPage?.limitReachedDesc || '您已达到创建团队的数量上限（最多2个）。请先删除现有团队或联系管理员。'}
+                  {safeT.createTeamPage?.limitReachedDesc || `您已达到创建团队的数量上限（最多${maxTeams}个）。请先删除现有团队或联系管理员。`}
                 </p>
               </div>
             </div>
@@ -172,7 +185,7 @@ export default function CreateTeamPage() {
               </Button>
               <Button
                 type="submit"
-                disabled={submitting || teams.filter(m => m.role === 'owner').length >= 2}
+                disabled={submitting || teams.filter(m => m.role === 'owner').length >= maxTeams}
                 className="transition-all duration-200 hover:shadow-md hover:scale-[1.02] bg-gradient-to-r from-primary to-primary/90"
               >
                 {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

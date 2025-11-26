@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { Loader2, PlusCircle, Sparkles } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTeam } from '@/contexts/team-context'
 import { PERSONAL_TEAM_ID } from '@/lib/team-storage.js'
@@ -30,6 +30,7 @@ export function TeamSwitcher({ className }) {
     pendingInvites,
   } = useTeam()
   const [open, setOpen] = useState(false)
+  const [maxTeams, setMaxTeams] = useState(2)
   const router = useRouter()
   const { t } = useLanguage()
   const safeT = t || {}
@@ -37,6 +38,17 @@ export function TeamSwitcher({ className }) {
   const selectedValue = activeTeamId ?? PERSONAL_TEAM_ID
 
   const pendingCount = pendingInvites.length
+
+  useEffect(() => {
+    let mounted = true
+    fetch('/api/config')
+      .then((res) => res.json())
+      .then((data) => {
+        if (mounted && data?.maxTeamsPerUser) setMaxTeams(Number(data.maxTeamsPerUser))
+      })
+      .catch(() => {})
+    return () => { mounted = false }
+  }, [])
 
   if (loading && !teams.length) {
     return (
@@ -98,11 +110,11 @@ export function TeamSwitcher({ className }) {
             </SelectItem>
           ))}
           <SelectSeparator />
-          <SelectItem value={CREATE_TEAM_VALUE} disabled={teams.filter(m => m.role === 'owner').length >= 2}>
+          <SelectItem value={CREATE_TEAM_VALUE} disabled={teams.filter(m => m.role === 'owner').length >= maxTeams}>
             <div className="flex items-center gap-2 text-primary">
               <PlusCircle className="h-4 w-4" />
               <span>{safeT.teamsPage?.createTeam || '创建团队'}</span>
-              {teams.filter(m => m.role === 'owner').length >= 2 && (
+              {teams.filter(m => m.role === 'owner').length >= maxTeams && (
                 <span className="ml-2 text-xs text-muted-foreground">
                   ({safeT.teamsPage?.limitReached || '已达上限'})
                 </span>

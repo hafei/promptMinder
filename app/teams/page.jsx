@@ -169,6 +169,7 @@ export default function TeamsPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [leaveLoading, setLeaveLoading] = useState(false);
+  const [maxTeams, setMaxTeams] = useState(2);
 
   const isManager = useMemo(() => {
     return (
@@ -193,6 +194,17 @@ export default function TeamsPage() {
       }
     }
   }, [teamLoading, activeTeamId, teams, selectTeam]);
+
+  useEffect(() => {
+    let mounted = true
+    fetch('/api/config')
+      .then((res) => res.json())
+      .then((data) => {
+        if (mounted && data?.maxTeamsPerUser) setMaxTeams(Number(data.maxTeamsPerUser))
+      })
+      .catch(() => {})
+    return () => { mounted = false }
+  }, [])
 
   useEffect(() => {
     if (activeTeamId) {
@@ -526,13 +538,13 @@ export default function TeamsPage() {
           <div className="flex items-center gap-3">
             <Button
               onClick={() => router.push("/teams/new")}
-              disabled={teams.filter(m => m.role === 'owner').length >= 2}
-              title={teams.filter(m => m.role === 'owner').length >= 2 ? (safeT.teamsPage?.limitReached || '已达上限') : ''}
+              disabled={teams.filter(m => m.role === 'owner').length >= maxTeams}
+              title={teams.filter(m => m.role === 'owner').length >= maxTeams ? (safeT.teamsPage?.limitReached || '已达上限') : ''}
               className="transition-all duration-200 hover:shadow-md hover:scale-[1.02] bg-gradient-to-r from-primary to-primary/90"
             >
               <Plus className="mr-2 h-4 w-4" />
               {safeT.teamsPage.createTeam}
-              {teams.filter(m => m.role === 'owner').length >= 2 && ` (${safeT.teamsPage?.limitReached || '已达上限'})`}
+              {teams.filter(m => m.role === 'owner').length >= maxTeams && ` (${safeT.teamsPage?.limitReached || '已达上限'})`}
             </Button>
           </div>
         </div>

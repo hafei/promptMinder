@@ -1,4 +1,5 @@
 import { TeamService, TEAM_ROLES, TEAM_STATUSES } from '@/lib/team-service'
+import { TEAM_CONFIG } from '@/lib/constants'
 import { ApiError } from '@/lib/api-error'
 
 describe('TeamService', () => {
@@ -75,7 +76,7 @@ describe('TeamService', () => {
     it('should throw error when user already has 2 teams', async () => {
       // Mock for checking team count
       const countBuilder = {
-        eq: jest.fn().mockResolvedValue({ count: 2, error: null })
+        eq: jest.fn().mockResolvedValue({ count: TEAM_CONFIG.MAX_TEAMS_PER_USER, error: null })
       }
 
       const mainBuilder = {
