@@ -14,7 +14,7 @@ export function LoginForm({ redirectUrl = '/prompts', onSuccess }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const { login } = useAuth()
+  const { login, refreshSession } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
 
@@ -34,7 +34,14 @@ export function LoginForm({ redirectUrl = '/prompts', onSuccess }) {
     try {
       await login(username, password)
       toast({ description: '登录成功' })
-      
+
+      // Ensure server-set cookie is applied and session is refreshed
+      try {
+        await refreshSession()
+      } catch (err) {
+        // ignore refresh errors, proceed with redirect
+      }
+
       if (onSuccess) {
         onSuccess()
       } else {
@@ -96,7 +103,7 @@ export function RegisterForm({ redirectUrl = '/prompts', onSuccess }) {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const { register } = useAuth()
+  const { register, refreshSession } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
 
@@ -132,7 +139,14 @@ export function RegisterForm({ redirectUrl = '/prompts', onSuccess }) {
     try {
       await register(username, password, displayName || username)
       toast({ description: '注册成功' })
-      
+
+      // Ensure server-set cookie is applied and session is refreshed
+      try {
+        await refreshSession()
+      } catch (err) {
+        // ignore refresh errors, proceed with redirect
+      }
+
       if (onSuccess) {
         onSuccess()
       } else {

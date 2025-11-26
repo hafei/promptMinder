@@ -58,7 +58,7 @@ export default function TeamsPage() {
       member: "成员",
       loadTeamError: "加载团队失败",
       teamDataFormatError: "团队数据格式错误",
-      inviteEmailRequired: "请输入邮箱地址",
+      inviteEmailRequired: "请输入用户名",
       inviteMemberError: "邀请成员失败",
       inviteSent: "邀请已发送",
       updateMemberError: "更新成员失败",
@@ -98,9 +98,9 @@ export default function TeamsPage() {
       leaveTeam: "离开团队",
       inviteMemberDialog: {
         title: "邀请成员",
-        description: "邀请新成员加入你的团队",
-        emailLabel: "邮箱地址",
-        emailPlaceholder: "请输入邮箱地址",
+        description: "邀请新成员加入你的团队（使用用户名）",
+        emailLabel: "用户名",
+        emailPlaceholder: "请输入用户名",
         roleLabel: "角色",
         cancel: "取消",
         sendInvite: "发送邀请"
@@ -158,7 +158,7 @@ export default function TeamsPage() {
   const [teamDetails, setTeamDetails] = useState(null);
   const [membersLoading, setMembersLoading] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [inviteForm, setInviteForm] = useState({ email: "", role: "member" });
+  const [inviteForm, setInviteForm] = useState({ username: "", role: "member" });
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState({ name: "", description: "" });
   const [transferOpen, setTransferOpen] = useState(false);
@@ -267,7 +267,7 @@ export default function TeamsPage() {
   };
 
   const handleInviteMember = async () => {
-    if (!inviteForm.email.trim()) {
+    if (!inviteForm.username || !inviteForm.username.trim()) {
       toast({
         variant: "destructive",
         description: safeT.teamsPage.inviteEmailRequired,
@@ -282,7 +282,7 @@ export default function TeamsPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email: inviteForm.email.trim(),
+          username: inviteForm.username.trim(),
           role: inviteForm.role,
         }),
       });
@@ -295,7 +295,7 @@ export default function TeamsPage() {
       toast({
         description: safeT.teamsPage.inviteSent,
       });
-      setInviteForm({ email: "", role: "member" });
+      setInviteForm({ username: "", role: "member" });
       setInviteOpen(false);
       refresh();
       setRefreshKey((prev) => prev + 1);
@@ -669,16 +669,16 @@ export default function TeamsPage() {
                       </DialogHeader>
                       <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                          <Label htmlFor="invite-email">{safeT.teamsPage.inviteMemberDialog.emailLabel}</Label>
+                          <Label htmlFor="invite-username">{safeT.teamsPage.inviteMemberDialog.emailLabel}</Label>
                           <Input
-                            id="invite-email"
-                            type="email"
+                            id="invite-username"
+                            type="text"
                             placeholder={safeT.teamsPage.inviteMemberDialog.emailPlaceholder}
-                            value={inviteForm.email}
+                            value={inviteForm.username}
                             onChange={(event) =>
                               setInviteForm((prev) => ({
                                 ...prev,
-                                email: event.target.value,
+                                username: event.target.value,
                               }))
                             }
                           />

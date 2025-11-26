@@ -12,7 +12,7 @@ export function AuthProvider({ children }) {
   // 获取当前会话
   const fetchSession = useCallback(async () => {
     try {
-      const res = await fetch('/api/auth/session')
+      const res = await fetch('/api/auth/session', { credentials: 'include' })
       const data = await res.json()
       
       setUser(data.user)
@@ -34,6 +34,7 @@ export function AuthProvider({ children }) {
   const login = async (username, password) => {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password })
     })
@@ -53,6 +54,7 @@ export function AuthProvider({ children }) {
   const register = async (username, password, displayName) => {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password, displayName })
     })
@@ -71,7 +73,7 @@ export function AuthProvider({ children }) {
   // 登出
   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' })
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
     } catch (error) {
       console.error('登出请求失败:', error)
     }

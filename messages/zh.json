@@ -889,9 +889,9 @@
     "viewInvites": "查看邀请",
     "inviteMemberDialog": {
       "title": "邀请成员加入团队",
-      "description": "输入对方的邮箱地址，并选择该成员在团队中的角色。",
-      "emailLabel": "邮箱地址",
-      "emailPlaceholder": "name@example.com",
+      "description": "输入对方的用户名，并选择该成员在团队中的角色。",
+      "emailLabel": "用户名",
+      "emailPlaceholder": "例如：alice",
       "roleLabel": "角色",
       "cancel": "取消",
       "sendInvite": "发送邀请"
@@ -948,7 +948,7 @@
     "joinedTeam": "已加入团队",
     "loadTeamError": "加载团队信息失败",
     "teamDataFormatError": "团队数据格式错误",
-    "inviteEmailRequired": "请输入要邀请的邮箱",
+    "inviteEmailRequired": "请输入要邀请的用户名",
     "inviteMemberError": "邀请成员失败",
     "updateMemberError": "更新成员信息失败",
     "removeMemberError": "移除成员失败",

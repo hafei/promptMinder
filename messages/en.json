@@ -867,9 +867,9 @@
     "viewInvites": "View Invitations",
     "inviteMemberDialog": {
       "title": "Invite Member to Team",
-      "description": "Enter the email address and select the member's role in the team.",
-      "emailLabel": "Email Address",
-      "emailPlaceholder": "name@example.com",
+      "description": "Enter the username and select the member's role in the team.",
+      "emailLabel": "Username",
+      "emailPlaceholder": "e.g. alice",
       "roleLabel": "Role",
       "cancel": "Cancel",
       "sendInvite": "Send Invitation"
@@ -926,7 +926,7 @@
     "joinedTeam": "Joined team",
     "loadTeamError": "Failed to load team information",
     "teamDataFormatError": "Team data format error",
-    "inviteEmailRequired": "Please enter email to invite",
+    "inviteEmailRequired": "Please enter username to invite",
     "inviteMemberError": "Failed to invite member",
     "updateMemberError": "Failed to update member information",
     "removeMemberError": "Failed to remove member",
