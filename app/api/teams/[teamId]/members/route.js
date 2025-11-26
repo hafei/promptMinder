@@ -3,7 +3,6 @@ import { createSupabaseServerClient } from '@/lib/supabaseServer.js'
 import { TeamService, TEAM_STATUSES } from '@/lib/team-service.js'
 import { handleApiError } from '@/lib/handle-api-error.js'
 import { requireUserId } from '@/lib/auth.js'
-import { clerkClient } from '@clerk/nextjs/server'
 
 async function getTeamId(paramsPromise) {
   const { teamId } = await paramsPromise
@@ -43,64 +42,30 @@ export async function POST(request, { params }) {
   try {
     const teamId = await getTeamId(params)
     const userId = await requireUserId()
-    const { email: targetEmail, role } = await request.json()
+    const { username, role } = await request.json()
 
-    if (!targetEmail || !targetEmail.trim()) {
-      return NextResponse.json({ error: '有效的邮箱地址是必填项' }, { status: 400 })
+    if (!username || !username.trim()) {
+      return NextResponse.json({ error: '用户名是必填项' }, { status: 400 })
     }
 
-    const normalizedEmail = targetEmail.trim().toLowerCase()
-    let clerk
-
-    try {
-      // Handle both function (v5+) and object (older) forms of clerkClient
-      if (typeof clerkClient === 'function') {
-        clerk = await clerkClient()
-      } else {
-        clerk = clerkClient
-      }
-    } catch (clerkError) {
-      console.error('[team-members] Failed to initialize Clerk client', clerkError)
-      return NextResponse.json(
-        { error: '用户服务暂时不可用', details: clerkError.message }, 
-        { status: 503 }
-      )
-    }
-
-    if (!clerk?.users) {
-      console.error('[team-members] Clerk client invalid:', { 
-        type: typeof clerk, 
-        hasUsers: !!clerk?.users,
-        isFunction: typeof clerkClient === 'function'
-      })
-      return NextResponse.json({ error: '用户服务暂时不可用' }, { status: 503 })
-    }
-
-    const result = await clerk.users.getUserList({ emailAddress: [normalizedEmail], limit: 1 })
-    
-    // Handle both Array and PaginatedResponse formats
-    const users = Array.isArray(result?.data) 
-      ? result.data 
-      : Array.isArray(result) 
-        ? result 
-        : []
-        
-    if (!users.length) {
-      console.warn(`[team-members] User not found for email: ${normalizedEmail}`, {
-        resultType: typeof result,
-        hasData: !!result?.data,
-        isArray: Array.isArray(result)
-      })
-      return NextResponse.json({ error: '未找到该邮箱对应的用户' }, { status: 404 })
-    }
-
-    const targetUser = users[0]
-
+    const normalizedUsername = username.trim().toLowerCase()
     const supabase = createSupabaseServerClient()
+
+    // 查找用户
+    const { data: targetUser, error: findError } = await supabase
+      .from('users')
+      .select('id, username, display_name')
+      .eq('username', normalizedUsername)
+      .single()
+        
+    if (findError || !targetUser) {
+      return NextResponse.json({ error: '未找到该用户名对应的用户' }, { status: 404 })
+    }
+
     const teamService = new TeamService(supabase)
     const membership = await teamService.inviteMember(teamId, userId, {
       userId: targetUser.id,
-      email: normalizedEmail,
+      email: null, // 本地认证不使用邮箱
       role
     })
 

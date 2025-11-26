@@ -1,8 +1,8 @@
 import "./globals.css";
-import { Inter } from "next/font/google";
 import Providers from "./providers";
 
-const inter = Inter({ subsets: ["latin"], display: "swap" });
+// 使用系统字体栈，适用于离线环境
+const fontClass = "font-sans"; // 使用 Tailwind 的系统字体栈
 
 const siteUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://prompt-minder.com";
 
@@ -94,7 +94,7 @@ export default function RootLayout({ children }) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
       </head>
-      <body className={inter.className}>
+      <body className="font-sans antialiased">
         <Providers>{children}</Providers>
       </body>
     </html>

@@ -19,7 +19,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useTeam } from "@/contexts/team-context";
-import { useUser } from "@clerk/nextjs";
+import { useUser } from "@/contexts/auth-context";
 import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 import { apiClient } from "@/lib/api-client";
 import { useClipboard } from "@/lib/clipboard";

@@ -1,13 +1,13 @@
 'use client'
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { useUser } from '@clerk/nextjs'
+import { useAuth } from '@/contexts/auth-context'
 import { PERSONAL_TEAM_ID, TEAM_STORAGE_KEY } from '@/lib/team-storage.js'
 
 const TeamContext = createContext(null)
 
 export function TeamProvider({ children }) {
-  const { isSignedIn } = useUser()
+  const { isSignedIn } = useAuth()
   const [teams, setTeams] = useState([])
   const [activeTeamId, setActiveTeamId] = useState(null)
   const [loading, setLoading] = useState(false)

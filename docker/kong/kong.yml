@@ -13,7 +13,8 @@ services:
     routes:
       - name: postgrest-route
         paths:
-          - /rest
+          - /rest/v1
+        strip_path: true
 
   - name: realtime
     url: http://realtime:4000

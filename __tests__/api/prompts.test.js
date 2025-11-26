@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js'
-import { auth } from '@clerk/nextjs/server'
 
 // Mock the route handlers
 const mockGET = jest.fn()
@@ -12,11 +11,15 @@ jest.mock('@/app/api/prompts/route', () => ({
 
 // Mock dependencies
 jest.mock('@supabase/supabase-js')
-jest.mock('@clerk/nextjs/server')
+
+// Mock local auth
+const mockGetCurrentUserId = jest.fn()
+jest.mock('@/lib/local-auth/session.js', () => ({
+  getCurrentUserId: () => mockGetCurrentUserId()
+}))
 
 describe('/api/prompts', () => {
   let mockSupabase
-  let mockAuth
 
   beforeEach(() => {
     // Reset mocks
@@ -36,10 +39,7 @@ describe('/api/prompts', () => {
     createClient.mockReturnValue(mockSupabase)
     
     // Mock auth
-    mockAuth = {
-      userId: 'test-user-id'
-    }
-    auth.mockResolvedValue(mockAuth)
+    mockGetCurrentUserId.mockResolvedValue('test-user-id')
   })
 
   describe('GET /api/prompts', () => {

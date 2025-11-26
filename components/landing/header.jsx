@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from 'next/navigation';
 import { Library, LayoutGrid, Languages } from "lucide-react"
 import { OptimizedImage } from "@/components/ui/optimized-image";
-import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import { SignedIn, SignedOut, UserButton } from "@/components/auth";
 import {
     NavigationMenu,
     NavigationMenuItem,

@@ -33,10 +33,10 @@
 
 ### 技术特性
 
-- ⚡ **高性能** - Next.js 15 + React 18，极速加载
-- 🔐 **安全认证** - Clerk 提供企业级用户认证
-- 💾 **可靠存储** - Supabase + PostgreSQL 数据库
-- 🚀 **易部署** - 支持 Vercel、Zeabur 一键部署
+- ⚡ **高性能** - Next.js 15 + React 19，极速加载
+- 🔐 **安全认证** - 内置本地用户认证，支持离线部署
+- 💾 **可靠存储** - PostgreSQL 数据库
+- 🚀 **易部署** - 支持 Docker Compose 一键部署，适用于离线内网环境
 
 ## 🚀 快速开始
 
@@ -67,31 +67,34 @@ pnpm install
    创建 `.env.local` 文件并配置以下变量：
 
 ```env
-# Supabase 配置
-SUPABASE_URL=your_supabase_project_url
+# 数据库配置 (Docker Compose 默认值)
+SUPABASE_URL=http://localhost:8000
 SUPABASE_ANON_KEY=your_supabase_anon_key
 
-# Clerk 认证配置
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
-CLERK_SECRET_KEY=your_clerk_secret_key
-NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
-NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+# 本地认证配置
+AUTH_SECRET=your_auth_secret_at_least_32_characters
 
-# NextAuth 配置
-AUTH_SECRET=your_auth_secret
+# 管理员配置 (用户名列表, 逗号分隔)
+ADMIN_USERS=admin
 
-# AI API 配置
+# AI API 配置 (可选, 离线环境可不配置)
 ZHIPU_API_KEY=your_zhipu_api_key
-
-# GitHub OAuth (可选)
-GITHUB_ID=your_github_app_id
-GITHUB_SECRET=your_github_app_secret
 
 # 基础 URL
 NEXT_PUBLIC_BASE_URL=http://localhost:3000
 ```
 
-4. **启动开发服务器**
+4. **初始化数据库**
+
+运行 SQL 脚本创建所需表:
+```bash
+# users.sql - 用户和会话表
+# prompts.sql - 提示词表
+# tags.sql - 标签表
+# teams.sql - 团队表
+```
+
+5. **启动开发服务器**
 
 ```bash
 npm run dev

@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/navigation-menu";
 import { Menu, Library, LayoutGrid, Languages } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
+import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton } from '@/components/auth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { TeamSwitcher } from '@/components/team/TeamSwitcher';
 

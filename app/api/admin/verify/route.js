@@ -1,33 +1,33 @@
 import { NextResponse } from 'next/server';
 
-// 管理员邮箱列表（从环境变量读取）
-const ADMIN_EMAILS = process.env.ADMIN_EMAILS?.split(',').map(email => email.trim()) || [];
+// 管理员用户名列表（从环境变量读取）
+const ADMIN_USERNAMES = process.env.ADMIN_USERNAMES?.split(',').map(u => u.trim().toLowerCase()) || [];
 
 export async function POST(request) {
   try {
-    const { email } = await request.json();
+    const { username } = await request.json();
 
-    if (!email || !email.trim()) {
+    if (!username || !username.trim()) {
       return NextResponse.json(
-        { error: '请输入邮箱地址' },
+        { error: '请输入用户名' },
         { status: 400 }
       );
     }
 
-    const trimmedEmail = email.trim().toLowerCase();
+    const trimmedUsername = username.trim().toLowerCase();
     
-    // 检查邮箱是否在管理员列表中
-    const isAdmin = ADMIN_EMAILS.some(
-      adminEmail => adminEmail.toLowerCase() === trimmedEmail
+    // 检查用户名是否在管理员列表中
+    const isAdmin = ADMIN_USERNAMES.some(
+      adminUsername => adminUsername === trimmedUsername
     );
 
     if (isAdmin) {
       // 生成简单的 session token（生产环境建议使用更安全的方案）
-      const token = Buffer.from(`${trimmedEmail}:${Date.now()}`).toString('base64');
+      const token = Buffer.from(`${trimmedUsername}:${Date.now()}`).toString('base64');
       
       return NextResponse.json({
         success: true,
-        email: trimmedEmail,
+        username: trimmedUsername,
         token
       });
     }
@@ -61,7 +61,7 @@ export async function GET(request) {
     // 解析 token
     try {
       const decoded = Buffer.from(token, 'base64').toString();
-      const [email, timestamp] = decoded.split(':');
+      const [username, timestamp] = decoded.split(':');
 
       // 检查 token 是否过期（24小时）
       const tokenAge = Date.now() - parseInt(timestamp);
@@ -74,15 +74,15 @@ export async function GET(request) {
         );
       }
 
-      // 验证邮箱是否仍在管理员列表中
-      const isAdmin = ADMIN_EMAILS.some(
-        adminEmail => adminEmail.toLowerCase() === email.toLowerCase()
+      // 验证用户名是否仍在管理员列表中
+      const isAdmin = ADMIN_USERNAMES.some(
+        adminUsername => adminUsername === username.toLowerCase()
       );
 
       if (isAdmin) {
         return NextResponse.json({
           success: true,
-          email
+          username
         });
       }
 

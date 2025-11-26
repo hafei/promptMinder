@@ -3,7 +3,7 @@ import { createSupabaseServerClient } from '@/lib/supabaseServer.js'
 import { TeamService } from '@/lib/team-service.js'
 import { handleApiError } from '@/lib/handle-api-error.js'
 import { requireUserId } from '@/lib/auth.js'
-import { clerkClient } from '@clerk/nextjs/server'
+import { userClient } from '@/lib/local-auth/user-service.js'
 
 async function getTeamId(paramsPromise) {
   const { teamId } = await paramsPromise
@@ -43,92 +43,41 @@ export async function GET(_request, { params }) {
     const profileMap = new Map()
 
     if (uniqueUserIds.length > 0) {
-      let clerk
       try {
-        if (typeof clerkClient === 'function') {
-          clerk = await clerkClient()
-        } else {
-          clerk = clerkClient
-        }
-      } catch (clerkError) {
-        console.warn(`[teams/${teamId}] Failed to initialize Clerk client, falling back to basic info`, clerkError)
-      }
+        // 使用本地用户服务获取用户信息
+        const result = await userClient.users.getUserList({
+          userId: uniqueUserIds,
+          limit: uniqueUserIds.length,
+        })
 
-      if (!clerk?.users) {
-        // Fallback: use user IDs as display names
+        const users = result?.data || []
+
+        users.forEach((user) => {
+          if (!user) return
+          profileMap.set(user.id, {
+            displayName: user.displayName || user.username || user.id,
+            email: null, // 本地认证不使用邮箱
+          })
+        })
+
+        // 为未找到的用户设置默认值
+        uniqueUserIds.forEach((id) => {
+          if (!profileMap.has(id)) {
+            profileMap.set(id, {
+              displayName: id,
+              email: null,
+            })
+          }
+        })
+      } catch (fetchError) {
+        console.error(`[teams/${teamId}] failed to load users`, fetchError)
+        // 设置默认值
         uniqueUserIds.forEach((id) => {
           profileMap.set(id, {
             displayName: id,
             email: null,
           })
         })
-      } else {
-        try {
-          // 批量获取用户信息
-          const result = await clerk.users.getUserList({
-            userId: uniqueUserIds,
-            limit: uniqueUserIds.length,
-          })
-
-          // 确保返回的数据是数组
-          const users = Array.isArray(result?.data)
-            ? result.data
-            : Array.isArray(result)
-              ? result
-              : []
-
-          // 处理批量获取的用户信息
-          users.forEach((user) => {
-            if (!user) return
-            const primaryEmail = user.primaryEmailAddress?.emailAddress
-              || user.emailAddresses?.[0]?.emailAddress
-              || null
-            profileMap.set(user.id, {
-              displayName: user.fullName || user.username || primaryEmail || user.id,
-              email: primaryEmail,
-            })
-          })
-
-          // 检查是否有未获取到的用户
-          const missingUserIds = uniqueUserIds.filter((id) => !profileMap.has(id))
-          if (missingUserIds.length > 0) {
-            console.warn(`[teams/${teamId}] Some users not found in batch fetch, falling back to individual fetch for ${missingUserIds.length} users`)
-            throw new Error('Incomplete batch fetch')
-          }
-        } catch (fetchError) {
-          console.error(`[teams/${teamId}] failed to load batch users`, fetchError)
-          // 单个获取用户信息作为后备方案
-          await Promise.all(
-            uniqueUserIds.map(async (id) => {
-              if (profileMap.has(id)) return
-              try {
-                const user = await clerk.users.getUser(id)
-                if (!user) {
-                  console.warn(`[teams/${teamId}] User not found: ${id}`)
-                  profileMap.set(id, {
-                    displayName: id,
-                    email: null,
-                  })
-                  return
-                }
-                const primaryEmail = user.primaryEmailAddress?.emailAddress
-                  || user.emailAddresses?.[0]?.emailAddress
-                  || null
-                profileMap.set(id, {
-                  displayName: user.fullName || user.username || primaryEmail || id,
-                  email: primaryEmail,
-                })
-              } catch (singleError) {
-                console.error(`[teams/${teamId}] failed to load user ${id}`, singleError)
-                // 设置默认值，避免undefined
-                profileMap.set(id, {
-                  displayName: id,
-                  email: null,
-                })
-              }
-            })
-          )
-        }
       }
     }
 

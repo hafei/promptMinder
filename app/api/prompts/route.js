@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { requireUserId } from '@/lib/auth.js'
 import { resolveTeamContext } from '@/lib/team-request.js'
 import { handleApiError } from '@/lib/handle-api-error.js'
-import { clerkClient } from '@clerk/nextjs/server'
 
 function applyPromptFilters(query, { teamId, userId, tag, search }) {
   const baseQuery = teamId

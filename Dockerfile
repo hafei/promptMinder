@@ -47,6 +47,9 @@ ENV SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
 # Fetch only runtime deps
 ENV NODE_ENV=production
 
+# Install pnpm runtime so the `pnpm start` command is available
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
 # Copy Node modules and build output from builder
 COPY --from=builder /app/.next .next
 COPY --from=builder /app/public ./public
@@ -56,4 +59,6 @@ COPY --from=builder /app/node_modules ./node_modules
 
 # If you have a custom start script, use it. Otherwise use next start
 EXPOSE 3000
-CMD ["pnpm", "start"]
+ENTRYPOINT []
+# Run Next.js start using the installed local binary to avoid requiring pnpm at runtime
+CMD ["node", "./node_modules/next/dist/bin/next", "start"]

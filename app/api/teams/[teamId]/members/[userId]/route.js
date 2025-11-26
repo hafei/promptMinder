@@ -3,7 +3,6 @@ import { createSupabaseServerClient } from '@/lib/supabaseServer.js'
 import { TeamService, TEAM_STATUSES } from '@/lib/team-service.js'
 import { handleApiError } from '@/lib/handle-api-error.js'
 import { requireUserId } from '@/lib/auth.js'
-import { clerkClient } from '@clerk/nextjs/server'
 
 async function resolveParams(paramsPromise, actorUserId = null) {
   const { teamId, userId: rawUserId } = await paramsPromise
@@ -30,24 +29,8 @@ export async function PATCH(request, { params }) {
 
     let membership
     if (memberUserId === actorUserId && body?.status === TEAM_STATUSES.ACTIVE) {
-      let clerk
-      try {
-        if (typeof clerkClient === 'function') {
-          clerk = await clerkClient()
-        } else {
-          clerk = clerkClient
-        }
-      } catch (clerkError) {
-        console.error('[team-members/update] Failed to initialize Clerk client', clerkError)
-      }
-
-      if (!clerk?.users) {
-        return NextResponse.json({ error: '用户服务暂时不可用' }, { status: 503 })
-      }
-
-      const actorUser = await clerk.users.getUser(actorUserId)
-      const primaryEmail = actorUser?.primaryEmailAddress?.emailAddress
-      membership = await teamService.acceptInvite(teamId, actorUserId, primaryEmail || null)
+      // 接受邀请时不需要邮箱
+      membership = await teamService.acceptInvite(teamId, actorUserId, null)
     } else {
       membership = await teamService.updateMember(teamId, memberUserId, actorUserId, {
         role: body?.role,

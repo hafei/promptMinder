@@ -12,7 +12,7 @@ const MotionDiv = dynamic(
 );
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth } from "@/contexts/auth-context";
 import { TypeAnimation } from "react-type-animation";
 import { BoltIcon, GlobeAltIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import ShinyText from "../texts/ShinyText";

@@ -7,7 +7,7 @@ import { ArrowLeft } from "lucide-react"
 import ChatTestWrapper from '@/components/chat/ChatTestWrapper';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTeam } from '@/contexts/team-context';
-import { useUser } from "@clerk/nextjs";
+import { useUser } from "@/contexts/auth-context";
 import VariableInputs from '@/components/prompt/VariableInputs';
 import { replaceVariables } from '@/lib/promptVariables';
 import PromptHeader from '@/components/prompt/PromptHeader';
