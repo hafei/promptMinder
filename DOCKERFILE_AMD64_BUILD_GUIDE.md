@@ -15,6 +15,7 @@
 ```bash
 # 构建镜像
 docker build -f Dockerfile.amd64 -t promptminder:amd64 .
+docker build -f Dockerfile.amd64 -t promptminder:v0.1.0 .
 
 # 运行容器
 docker run -p 3000:3000 promptminder:amd64
