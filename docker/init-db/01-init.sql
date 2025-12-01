@@ -296,6 +296,9 @@ GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO authenticated;
 -- anon 只有读取权限（用于公开数据）
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
 
+-- 特殊权限：允许匿名用户提交贡献
+GRANT INSERT ON prompt_contributions TO anon;
+
 -- 设置默认权限（对未来创建的表生效）
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO service_role;

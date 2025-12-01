@@ -3,6 +3,7 @@ import { requireUserId } from '@/lib/auth.js'
 import { resolveTeamContext } from '@/lib/team-request.js'
 import { handleApiError } from '@/lib/handle-api-error.js'
 import { getUserList } from '@/lib/local-auth/user-service.js'
+import { generateUUID } from '@/lib/utils'
 
 function applyPromptFilters(query, { teamId, userId, tag, search }) {
   const baseQuery = teamId
@@ -134,7 +135,7 @@ export async function POST(request) {
     const timestamp = new Date().toISOString()
 
     const promptPayload = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       team_id: targetTeamId,
       project_id: targetTeamId ? data.projectId || null : null,
       title: data.title,

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireUserId } from '@/lib/auth.js'
 import { resolveTeamContext } from '@/lib/team-request.js'
 import { handleApiError } from '@/lib/handle-api-error.js'
+import { generateUUID } from '@/lib/utils'
 
 export async function POST(request) {
   try {
@@ -87,7 +88,7 @@ export async function POST(request) {
     }
 
     const insertPayload = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       team_id: targetTeamId,
       project_id: targetTeamId ? dataToCopy.project_id || null : null,
       title: dataToCopy.title,

@@ -24,6 +24,7 @@ import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 import { apiClient } from "@/lib/api-client";
 import { useClipboard } from "@/lib/clipboard";
 import { debounce } from "@/lib/debounce-utils";
+import { generateUUID } from "@/lib/utils";
 import { PromptGrid, PromptGridSkeleton } from "@/components/prompt/PromptGrid";
 import { NewPromptDialog } from "@/components/prompt/NewPromptDialog";
 import { OptimizePromptDialog } from "@/components/prompt/OptimizePromptDialog";
@@ -260,7 +261,7 @@ export default function PromptsPage() {
       await apiClient.createPrompt(
         {
           ...newPrompt,
-          id: crypto.randomUUID(),
+          id: generateUUID(),
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           is_public: true,

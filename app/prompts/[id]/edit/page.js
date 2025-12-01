@@ -22,6 +22,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/api-client';
 import { useTeam } from '@/contexts/team-context';
+import { generateUUID } from '@/lib/utils';
 
 const CreatableSelect = dynamic(() => import('react-select/creatable'), {
   loading: () => <Skeleton className="h-10 w-full" />,
@@ -127,7 +128,7 @@ export default function EditPrompt({ params }) {
       if (isNewVersion) {
         const newPromptPayload = {
           ...prompt,
-          id: crypto.randomUUID(),
+          id: generateUUID(),
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };

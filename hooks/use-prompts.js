@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { DEFAULTS, UI_CONFIG } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
+import { generateUUID } from '@/lib/utils';
 
 export function usePrompts(filters = {}) {
   const [prompts, setPrompts] = useState([]);
@@ -43,7 +44,7 @@ export function usePrompts(filters = {}) {
   const createPrompt = useCallback(async (promptData) => {
     try {
       const newPrompt = await apiClient.createPrompt({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         ...promptData,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/lib/getSupabaseClient';
+import { generateUUID } from '@/lib/utils';
 
 export async function POST(request) {
   const supabase = getSupabaseClient();
@@ -23,7 +24,7 @@ export async function POST(request) {
 
     // 准备插入数据
     const contributionData = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       title: title.trim(),
       role_category: role.trim(),
       content: content.trim(),

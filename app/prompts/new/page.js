@@ -21,6 +21,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/api-client';
 import { useTeam } from '@/contexts/team-context';
+import { generateUUID } from '@/lib/utils';
 
 // Dynamic imports for heavy components
 const MotionDiv = dynamic(() => import('framer-motion').then((mod) => mod.motion.div), {
@@ -108,7 +109,7 @@ export default function NewPrompt() {
       await apiClient.createPrompt(
         {
           ...prompt,
-          id: crypto.randomUUID(),
+          id: generateUUID(),
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         },

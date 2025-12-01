@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth.js'
 import { getSupabaseClient } from '@/lib/getSupabaseClient';
+import { generateUUID } from '@/lib/utils';
 
 export async function GET(request) {
   const supabase = getSupabaseClient();
@@ -30,7 +31,7 @@ export async function POST(request) {
     const { name, isPublic } = await request.json();
     
     const tagData = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       name,
       user_id: isPublic ? null : userId,
       created_at: new Date().toISOString()

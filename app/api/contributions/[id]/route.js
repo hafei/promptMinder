@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/lib/getSupabaseClient';
+import { generateUUID } from '@/lib/utils';
 
 // 获取单个贡献详情
 export async function GET(request, { params }) {
@@ -69,7 +70,7 @@ export async function PATCH(request, { params }) {
     if (status === 'approved' && publishToPrompts) {
       // 创建新的公共提示词
       const promptData = {
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         title: existingContribution.title,
         content: existingContribution.content,
         description: `Contributed by community. Category: ${existingContribution.role_category}`,

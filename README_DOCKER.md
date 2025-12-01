@@ -223,3 +223,6 @@ docker build -t promptminder:0.1.0 .
 
 docker-compose up -d --build
 ```
+
+
+docker exec -i promptminder-db-1 psql -U promptminder -d promptminder -c "GRANT INSERT ON prompt_contributions TO anon;"
