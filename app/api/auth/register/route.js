@@ -100,9 +100,11 @@ export async function POST(request) {
     
     // 设置 cookie
     const cookieStore = await cookies()
+    // 只有在HTTPS环境下才设置secure属性
+    const isHttps = process.env.NEXT_PUBLIC_BASE_URL?.startsWith('https://')
     cookieStore.set(AUTH_COOKIE_NAME, sessionToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isHttps,
       sameSite: 'lax',
       path: '/',
       expires: expiresAt
