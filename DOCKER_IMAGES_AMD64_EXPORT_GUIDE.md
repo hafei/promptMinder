@@ -82,6 +82,7 @@ docker save kong:3.0 | gzip > kong-3.0-amd64.tar.gz
 docker save postgrest/postgrest:v14.1 | gzip > postgrest-v14.1-amd64.tar.gz
 docker save minio/minio:RELEASE.2025-09-07T16-13-09Z | gzip > minio-RELEASE.2025-09-07-amd64.tar.gz
 docker save supabase/storage-api:v1.32.0 | gzip > supabase-storage-api-v1.32.0-amd64.tar.gz
+docker save promptminder:v0.1.0 | gzip > promptminder-v0.1.0-amd64.tar.gz
 ```
 
 ### 批量导出脚本
