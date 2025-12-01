@@ -25,9 +25,7 @@ Docker Buildx 是 Docker 的构建插件，支持多平台构建。
 
 3. **构建 AMD64 镜像**：
    ```bash
-   docker buildx build --platform linux/amd64 -t promptminder:amd64-latest .
-
-   docker buildx build --platform linux/amd64 -t promptminder:amd64-latest .
+   docker buildx build --platform linux/amd64 -t promptminder:v0.1.0 .
    ```
 
 4. **构建并加载到本地 Docker**：
