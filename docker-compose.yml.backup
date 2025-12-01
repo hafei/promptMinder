@@ -1,6 +1,6 @@
 # =====================================================
 # PromptMinder Docker Compose 配置
-# 简化版 - 仅包含必需的 Supabase 服务
+# 一键部署本地 Supabase 栈 + 应用
 # =====================================================
 
 services:
@@ -53,7 +53,7 @@ services:
   # PostgREST (REST API)
   # =====================================================
   postgrest:
-    image: postgrest/postgrest:v14.1
+    image: postgrest/postgrest:latest
     restart: unless-stopped
     environment:
       PGRST_DB_URI: postgresql://${POSTGRES_USER:-promptminder}:${POSTGRES_PASSWORD:-promptminder}@db:5432/${POSTGRES_DB:-promptminder}
@@ -67,10 +67,63 @@ services:
         condition: service_healthy
 
   # =====================================================
+  # pg_meta (元数据服务)
+  # =====================================================
+  pgmeta:
+    image: supabase/postgres-meta:v0.93.1
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-promptminder}:${POSTGRES_PASSWORD:-promptminder}@db:5432/${POSTGRES_DB:-promptminder}
+      PG_META_DB_SCHEMA: public
+      PG_META_PORT: 3001
+    ports:
+      - '3001:3001'
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # =====================================================
+  # GoTrue (认证服务 - 可选)
+  # =====================================================
+  gotrue:
+    image: supabase/gotrue:v2.117.0
+    restart: unless-stopped
+    environment:
+      GOTRUE_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-key-with-at-least-32-characters-1234}
+      GOTRUE_SITE_URL: ${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}
+      API_EXTERNAL_URL: ${API_EXTERNAL_URL:-http://localhost:3000}
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgresql://${POSTGRES_USER:-promptminder}:${POSTGRES_PASSWORD:-promptminder}@db:5432/${POSTGRES_DB:-promptminder}
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: 'true'
+    ports:
+      - '9999:9999'
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # =====================================================
+  # Realtime (实时订阅 - 可选)
+  # =====================================================
+  realtime:
+    image: supabase/realtime:latest
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_NAME: ${POSTGRES_DB:-promptminder}
+      DB_USER: ${POSTGRES_USER:-promptminder}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-promptminder}
+      PORT: 4000
+    ports:
+      - '4000:4000'
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # =====================================================
   # MinIO (S3 兼容存储)
   # =====================================================
   minio:
-    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    image: minio/minio:latest
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
@@ -89,10 +142,10 @@ services:
       start_period: 10s
 
   # =====================================================
-  # Storage API (文件存储服务)
+  # Storage API (文件存储服务 - 可选)
   # =====================================================
   storage-api:
-    image: supabase/storage-api:v1.32.0
+    image: supabase/storage-api:latest
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-promptminder}:${POSTGRES_PASSWORD:-promptminder}@db:5432/${POSTGRES_DB:-promptminder}
@@ -110,6 +163,27 @@ services:
     depends_on:
       db:
         condition: service_healthy
+
+  # =====================================================
+  # Supabase Studio (数据库管理界面 - 可选)
+  # =====================================================
+  studio:
+    image: supabase/studio:latest
+    restart: unless-stopped
+    environment:
+      STUDIO_PG_META_URL: http://pgmeta:3001
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-promptminder}
+      DEFAULT_ORGANIZATION_NAME: PromptMinder
+      DEFAULT_PROJECT_NAME: Default
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_PUBLIC_URL: http://localhost:8000
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+    ports:
+      - '8080:3000'
+    depends_on:
+      - kong
+      - pgmeta
 
   # =====================================================
   # PromptMinder 应用
