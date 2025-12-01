@@ -83,12 +83,12 @@ export function Header() {
                   <Languages className="h-5 w-5" />
               </Button>
               <SignedOut>
-                <Link href="/prompts">
+                <Link href="/sign-in">
                   <button className="hidden px-4 py-2 text-sm font-semibold text-slate-600 transition-colors hover:text-slate-900 sm:block">
                     {t.auth.login}
                   </button>
                 </Link>
-                <Link href="/prompts">
+                <Link href="/sign-up">
                   <button className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 transition-all hover:bg-slate-800 hover:shadow-slate-900/30 hover:-translate-y-0.5">
                     {t.auth.signup}
                   </button>

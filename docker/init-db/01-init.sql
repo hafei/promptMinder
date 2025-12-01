@@ -3,17 +3,24 @@
 -- 此脚本在 Docker 容器首次启动时自动执行
 -- =====================================================
 
--- 创建 PostgREST 所需的角色
+-- 创建 PostgREST 和 Supabase Storage API 所需的角色
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'anon') THEN
         CREATE ROLE anon NOLOGIN;
+    END IF;
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'authenticated') THEN
+        CREATE ROLE authenticated NOLOGIN;
     END IF;
     IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'service_role') THEN
         CREATE ROLE service_role NOLOGIN;
     END IF;
     IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'authenticator') THEN
         CREATE ROLE authenticator NOLOGIN;
+    END IF;
+    -- 为 Storage API 创建 postgres 角色别名
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'postgres') THEN
+        CREATE ROLE postgres NOLOGIN;
     END IF;
 END
 $$;
@@ -276,11 +283,15 @@ ORDER BY date DESC;
 -- =====================================================
 
 -- 授予 schema 使用权限
-GRANT USAGE ON SCHEMA public TO anon, service_role;
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 
 -- service_role 拥有完整权限
 GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
+
+-- authenticated 角色拥有基本权限（已认证用户）
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
+GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO authenticated;
 
 -- anon 只有读取权限（用于公开数据）
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
@@ -288,10 +299,14 @@ GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
 -- 设置默认权限（对未来创建的表生效）
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE ON SEQUENCES TO authenticated;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO anon;
 
 -- 允许角色切换
-GRANT anon, service_role TO authenticator;
+GRANT anon, authenticated, service_role TO authenticator;
+-- 将 postgres 角色授予当前用户（promptminder）
+GRANT postgres TO CURRENT_USER;
 
 -- =====================================================
 -- 初始化完成

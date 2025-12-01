@@ -76,7 +76,7 @@ const nextConfig = {
             heavy: {
               name: "heavy",
               chunks: "all",
-              test: /[\\/]node_modules[\\/](react-select|framer-motion|@clerk)[\\/]/,
+              test: /[\\/]node_modules[\\/](react-select|framer-motion)[\\/]/,
               priority: 35,
               enforce: true,
             },

@@ -69,27 +69,32 @@ jest.mock('next/navigation', () => ({
   },
 }))
 
-// Mock Clerk authentication
-jest.mock('@clerk/nextjs', () => ({
+// Mock local authentication
+jest.mock('@/contexts/auth-context', () => ({
+  AuthProvider: ({ children }) => children,
+  useAuth: () => ({
+    user: {
+      id: 'test-user-id',
+      username: 'testuser',
+      display_name: 'Test User',
+      emailAddresses: [{ emailAddress: 'test@example.com' }],
+    },
+    isLoaded: true,
+    isSignedIn: true,
+    userId: 'test-user-id',
+  }),
   useUser: () => ({
     user: {
       id: 'test-user-id',
-      firstName: 'Test',
-      lastName: 'User',
+      username: 'testuser',
+      display_name: 'Test User',
       emailAddresses: [{ emailAddress: 'test@example.com' }],
     },
     isLoaded: true,
     isSignedIn: true,
   }),
-  useAuth: () => ({
-    userId: 'test-user-id',
-    isLoaded: true,
-    isSignedIn: true,
-    getToken: jest.fn().mockResolvedValue('mock-token'),
-  }),
-  SignInButton: ({ children }) => children,
-  SignUpButton: ({ children }) => children,
-  UserButton: () => <div data-testid="user-button">User Button</div>,
+  SignedIn: ({ children }) => children,
+  SignedOut: ({ children }) => null,
 }))
 
 // Mock Supabase
@@ -143,4 +148,3 @@ jest.mock('lucide-react', () => ({
 // 全局测试环境变量
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key'
-process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = 'test-clerk-key'

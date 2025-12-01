@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireUserId } from '@/lib/auth.js'
 import { resolveTeamContext } from '@/lib/team-request.js'
 import { handleApiError } from '@/lib/handle-api-error.js'
+import { getUserList } from '@/lib/local-auth/user-service.js'
 
 function applyPromptFilters(query, { teamId, userId, tag, search }) {
   const baseQuery = teamId
@@ -76,42 +77,24 @@ export async function GET(request) {
       
       if (userIds.length > 0) {
         try {
-          let clerk
-          if (typeof clerkClient === 'function') {
-            clerk = await clerkClient()
-          } else {
-            clerk = clerkClient
-          }
-
-          if (clerk?.users) {
-            const users = await clerk.users.getUserList({
-              userId: userIds,
-              limit: userIds.length,
+          const users = await getUserList(userIds)
+          const userMap = new Map()
+          
+          users.forEach(user => {
+            userMap.set(user.id, {
+              id: user.id,
+              fullName: user.fullName,
+              username: user.username,
+              displayName: user.displayName,
+              imageUrl: user.avatarUrl,
+              email: user.username // 使用用户名作为邮箱的替代
             })
+          })
 
-            const userMap = new Map()
-            const userList = Array.isArray(users?.data) ? users.data : (Array.isArray(users) ? users : [])
-            
-            userList.forEach(user => {
-              const email = user.emailAddresses?.find(e => e.id === user.primaryEmailAddressId)?.emailAddress 
-                || user.emailAddresses?.[0]?.emailAddress
-              
-              userMap.set(user.id, {
-                id: user.id,
-                fullName: user.fullName,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                username: user.username,
-                imageUrl: user.imageUrl,
-                email: email
-              })
-            })
-
-            prompts = prompts.map(prompt => ({
-              ...prompt,
-              creator: userMap.get(prompt.created_by) || null
-            }))
-          }
+          prompts = prompts.map(prompt => ({
+            ...prompt,
+            creator: userMap.get(prompt.created_by) || null
+          }))
         } catch (error) {
           console.warn('Failed to fetch creator details:', error)
           // Continue without creator details rather than failing
