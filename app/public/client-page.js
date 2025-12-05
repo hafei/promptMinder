@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { PromptCard } from '@/components/prompt/PromptCard';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/auth-context';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,7 @@ import { apiClient } from '@/lib/api-client';
 
 export default function PublicPromptsClient() {
     const { language, t } = useLanguage();
+    const { user } = useAuth();
     const { toast } = useToast();
     const [prompts, setPrompts] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -164,12 +166,19 @@ export default function PublicPromptsClient() {
         setIsSubmitting(true);
         
         try {
+            // 调试：打印用户信息
+            console.log('Current user:', user);
+            console.log('Contributor name will be:', user?.display_name || user?.username || null);
+            
             await apiClient.request('/api/contributions', {
                 method: 'POST',
                 body: {
                     title: contributeForm.title.trim(),
                     role: contributeForm.role.trim(),
-                    content: contributeForm.content.trim()
+                    content: contributeForm.content.trim(),
+                    // 如果用户已登录，自动附带用户信息
+                    contributorName: user?.display_name || user?.username || null,
+                    contributorEmail: null // 本地认证没有邮箱字段
                 },
             });
             

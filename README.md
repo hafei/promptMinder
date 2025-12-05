@@ -343,3 +343,7 @@ promptMinder/
 ---
 
 **PromptMinder** - 让 AI 提示词管理更简单 ✨
+
+
+
+docker-compose exec db psql -U promptminder -d promptminder -c "GRANT UPDATE ON prompt_contributions TO anon; GRANT INSERT ON prompts TO anon;"
