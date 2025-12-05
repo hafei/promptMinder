@@ -208,16 +208,23 @@ export default function EditPrompt({ params }) {
 
         for (const line of lines) {
           try {
-            const jsonStr = line.replace(/^data: /, '').trim();
+            // 移除可能的 "data: " 前缀
+            let jsonStr = line.trim();
+            if (jsonStr.startsWith('data:')) {
+              jsonStr = jsonStr.slice(5).trim();
+            }
             if (!jsonStr || jsonStr === '[DONE]') continue;
 
-            const delta = JSON.parse(jsonStr);
-            if (delta.choices?.[0]?.delta?.content) {
-              tempContent += delta.choices[0].delta.content;
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content ?? parsed.choices?.[0]?.message?.content;
+            if (content) {
+              tempContent += content;
               setOptimizedContent(tempContent);
+              // 实时更新 prompt.content
+              // setPrompt((prev) => ({ ...prev, content: tempContent }));
             }
-          } catch (error) {
-            console.error(tp.optimizeParsingError, error);
+          } catch (parseError) {
+            console.info('Parse error for line:', line, parseError.message);
           }
         }
       }
@@ -371,7 +378,7 @@ export default function EditPrompt({ params }) {
         </MotionDiv>
       </Suspense>
 
-      <Modal open={showOptimizeModal} onOpenChange={setShowOptimizeModal}>
+      <Modal isOpen={showOptimizeModal} onClose={() => setShowOptimizeModal(false)}>
         <ModalContent className="sm:max-w-2xl">
           <ModalHeader>
             <ModalTitle>{tp.optimizeModalTitle}</ModalTitle>

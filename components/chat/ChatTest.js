@@ -92,7 +92,7 @@ export default function ChatTest({ prompt, variableValues = {}, hasVariables = f
     }
     return '';
   });
-  const [selectedModel, setSelectedModel] = useState('glm-4-flash');
+  const [selectedModel, setSelectedModel] = useState('default');
   const [isLoading, setIsLoading] = useState(false);
   const [useCustomKey, setUseCustomKey] = useState(false);
   const [temperature, setTemperature] = useState(0.7);
@@ -105,16 +105,16 @@ export default function ChatTest({ prompt, variableValues = {}, hasVariables = f
   const [customModel, setCustomModel] = useState(() => {
     if (typeof window !== 'undefined') {
       const savedSettings = localStorage.getItem(STORAGE_KEY);
-      return savedSettings ? JSON.parse(savedSettings).model : 'glm-4-flash';
+      return savedSettings ? JSON.parse(savedSettings).model : '';
     }
-    return 'glm-4-flash';
+    return '';
   });
   const [baseURL, setBaseURL] = useState(() => {
     if (typeof window !== 'undefined') {
       const savedSettings = localStorage.getItem(STORAGE_KEY);
-      return savedSettings ? JSON.parse(savedSettings).baseURL : 'https://open.bigmodel.cn/api/paas/v4';
+      return savedSettings ? JSON.parse(savedSettings).baseURL : '';
     }
-    return 'https://open.bigmodel.cn/api/paas/v4';
+    return '';
   });
 const presets = [
   /* ---------- OpenAI ---------- */
@@ -556,7 +556,9 @@ const presets = [
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="glm-4-flash">{t.chatTest.glm4FlashModelFree}</SelectItem>
+                    <SelectItem value="default">
+                          {process.env.NEXT_PUBLIC_CUSTOM_MODEL_NAME || t.chatTest.glm4FlashModelFree || '默认模型'}
+                        </SelectItem>
                   </SelectContent>
                 </Select>
               </div>

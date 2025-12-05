@@ -1,18 +1,20 @@
 import OpenAI from 'openai';
 
+const DEFAULT_MODEL = process.env.CUSTOM_MODEL_NAME || 'gpt-3.5-turbo';
+
 export async function POST(req) {
   try {
     const { text } = await req.json();
     
-    // 创建 OpenAI 客户端实例
+    // 创建 OpenAI 客户端实例（使用自定义 API Key 和 URL）
     const openai = new OpenAI({
-      apiKey: process.env.ZHIPU_API_KEY,
-      baseURL: 'https://open.bigmodel.cn/api/paas/v4'
+      apiKey: process.env.CUSTOM_API_KEY,
+      baseURL: process.env.CUSTOM_API_URL || 'https://open.bigmodel.cn/api/paas/v4'
     });
 
     // 使用 OpenAI SDK 发送请求
     const completion = await openai.chat.completions.create({
-      model: 'glm-4-flash',
+      model: DEFAULT_MODEL,
       messages: [
         {
           role: "system",

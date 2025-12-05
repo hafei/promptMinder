@@ -1,23 +1,27 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
-const DEFAULT_API_KEY = process.env.ZHIPU_API_KEY;
-const DEFAULT_BASE_URL = 'https://open.bigmodel.cn/api/paas/v4';
+const DEFAULT_API_KEY = process.env.CUSTOM_API_KEY;
+const DEFAULT_BASE_URL = process.env.CUSTOM_API_URL || 'https://open.bigmodel.cn/api/paas/v4';
+const DEFAULT_MODEL = process.env.CUSTOM_MODEL_NAME || 'gpt-3.5-turbo';
+
 export async function POST(request) {
   try {
     const body = await request.json();
     const { 
       messages, 
       apiKey, 
-      model = 'glm-4v-flash', 
+      model, 
       systemPrompt, 
       temperature = 0.7,
       max_tokens = 2000,
       top_p = 0.7,
-      baseURL = DEFAULT_BASE_URL
+      baseURL
     } = body;
 
     const finalApiKey = apiKey || DEFAULT_API_KEY;
+    const finalModel = (!model || model === 'default') ? DEFAULT_MODEL : model;
+    const finalBaseURL = baseURL || DEFAULT_BASE_URL;
     
     if (!finalApiKey) {
       throw new Error('未提供 API Key');
@@ -26,7 +30,7 @@ export async function POST(request) {
     // 创建 OpenAI 客户端实例，使用传入的 baseURL
     const openai = new OpenAI({
       apiKey: finalApiKey,
-      baseURL: baseURL,
+      baseURL: finalBaseURL,
     });
     // 准备发送给 AI 的消息
     const aiMessages = [
@@ -36,7 +40,7 @@ export async function POST(request) {
 
     // 使用 OpenAI SDK 发送请求
     const completion = await openai.chat.completions.create({
-      model: model,
+      model: finalModel,
       messages: aiMessages,
       temperature: temperature,
       max_tokens: max_tokens,

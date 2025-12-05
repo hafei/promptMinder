@@ -6,6 +6,11 @@ const withBundleAnalyzer = require("@next/bundle-analyzer")({
 });
 
 const nextConfig = {
+  // Expose server-side CUSTOM_MODEL_NAME to the client as NEXT_PUBLIC_CUSTOM_MODEL_NAME
+  // This allows client components to display the actual model configured in the .env
+  env: {
+    NEXT_PUBLIC_CUSTOM_MODEL_NAME: process.env.CUSTOM_MODEL_NAME || process.env.NEXT_PUBLIC_CUSTOM_MODEL_NAME || '',
+  },
   webpack: (config, { isServer, dev }) => {
     if (!isServer) {
       config.plugins.push(

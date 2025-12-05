@@ -142,8 +142,10 @@ services:
       ADMIN_USERNAMES: ${ADMIN_USERNAMES:-admin}
       # 应用配置
       NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}
-      # AI 服务配置（可选）
-      ZHIPU_API_KEY: ${ZHIPU_API_KEY:-}
+      # AI 服务配置
+      CUSTOM_API_KEY: ${CUSTOM_API_KEY:-}
+      CUSTOM_API_URL: ${CUSTOM_API_URL:-}
+      CUSTOM_MODEL_NAME: ${CUSTOM_MODEL_NAME:-}
     ports:
       - '3000:3000'
 
