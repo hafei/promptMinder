@@ -347,3 +347,5 @@ promptMinder/
 
 
 docker-compose exec db psql -U promptminder -d promptminder -c "GRANT UPDATE ON prompt_contributions TO anon; GRANT INSERT ON prompts TO anon;"
+
+docker-compose exec db psql -U promptminder -d promptminder -c "GRANT INSERT ON tags TO anon; GRANT DELETE ON tags TO anon;"

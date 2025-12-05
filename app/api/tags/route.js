@@ -34,7 +34,8 @@ export async function POST(request) {
       id: generateUUID(),
       name,
       user_id: isPublic ? null : userId,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      created_by: userId
     };
 
     const { data: newTag, error } = await supabase
