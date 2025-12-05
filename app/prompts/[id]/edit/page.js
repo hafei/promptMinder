@@ -73,8 +73,21 @@ export default function EditPrompt({ params }) {
           apiClient.getTags(activeTeamId ? { teamId: activeTeamId } : {}),
         ]);
 
+        // 自动累加版本号
+        const currentVersion = promptData.version || '1.0.0';
+        const parts = currentVersion.split('.');
+        if (parts.length > 0) {
+          const lastIndex = parts.length - 1;
+          const lastPart = parseInt(parts[lastIndex], 10);
+          if (!isNaN(lastPart)) {
+            parts[lastIndex] = (lastPart + 1).toString();
+          } else {
+            parts[lastIndex] = '1';
+          }
+          promptData.version = parts.join('.');
+        }
         setPrompt(promptData);
-        setOriginalVersion(promptData.version);
+        setOriginalVersion(currentVersion);
 
         let tagList = []
         if (Array.isArray(tagsData?.team)) {
