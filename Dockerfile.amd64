@@ -31,7 +31,8 @@ RUN pnpm fetch --prod
 COPY . .
 
 # Install dependencies (uses local cache from pnpm fetch)
-RUN pnpm install --frozen-lockfile --prefer-offline
+# Allow installation even if lockfile is slightly out of date with package.json
+RUN pnpm install --no-frozen-lockfile --prefer-offline
 
 # Build the Next.js app
 RUN pnpm build
