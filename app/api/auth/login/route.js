@@ -22,12 +22,26 @@ export async function POST(request) {
     
     const supabase = createSupabaseServerClient()
     
-    // 查找用户（优先使用用户名，如果email字段不存在）
-    const { data: user, error: findError } = await supabase
+    // 查找用户（先尝试邮箱，再尝试用户名）
+    let { data: user, error: findError } = await supabase
       .from('users')
       .select('id, username, email, display_name, avatar_url, is_admin, password_hash')
-      .or(`email.eq.${email.toLowerCase()},username.eq.${email.toLowerCase()}`)
+      .eq('email', email.toLowerCase())
       .single()
+    
+    // 如果邮箱没找到，尝试用户名
+    if (findError) {
+      const { data: userByName, error: findByNameError } = await supabase
+        .from('users')
+        .select('id, username, email, display_name, avatar_url, is_admin, password_hash')
+        .eq('username', email.toLowerCase())
+        .single()
+      
+      if (!findByNameError) {
+        user = userByName
+        findError = null
+      }
+    }
     
     if (findError || !user) {
       return NextResponse.json(
