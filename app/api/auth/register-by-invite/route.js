@@ -1,0 +1,148 @@
+import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
+import { createSupabaseServerClient } from '@/lib/supabaseServer.js'
+import { 
+  hashPassword, 
+  generateSessionToken, 
+  SESSION_DURATION_MS, 
+  AUTH_COOKIE_NAME 
+} from '@/lib/local-auth/password.js'
+import { getInvitationByToken, updateInvitationStatus } from '@/lib/local-auth/invitation-service.js'
+
+export async function POST(request) {
+  try {
+    const { token, username, password, displayName } = await request.json()
+    
+    // 验证输入
+    if (!token || !username || !password) {
+      return NextResponse.json(
+        { error: '令牌、用户名和密码不能为空' },
+        { status: 400 }
+      )
+    }
+    
+    if (username.length < 3 || username.length > 50) {
+      return NextResponse.json(
+        { error: '用户名长度应在 3-50 个字符之间' },
+        { status: 400 }
+      )
+    }
+    
+    if (password.length < 6) {
+      return NextResponse.json(
+        { error: '密码长度至少 6 个字符' },
+        { status: 400 }
+      )
+    }
+    
+    // 验证用户名格式（只允许字母、数字、下划线）
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      return NextResponse.json(
+        { error: '用户名只能包含字母、数字和下划线' },
+        { status: 400 }
+      )
+    }
+    
+    const supabase = createSupabaseServerClient()
+    
+    // 验证邀请令牌
+    const invitation = await getInvitationByToken(token)
+    
+    if (!invitation) {
+      return NextResponse.json(
+        { error: '邀请链接无效或已过期' },
+        { status: 404 }
+      )
+    }
+    
+    if (invitation.status !== 'pending') {
+      return NextResponse.json(
+        { error: '此邀请已被使用或已过期' },
+        { status: 410 }
+      )
+    }
+    
+    // 检查用户名是否已存在
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('username', username.toLowerCase())
+      .single()
+    
+    if (existingUser) {
+      return NextResponse.json(
+        { error: '用户名已被使用' },
+        { status: 409 }
+      )
+    }
+    
+    // 创建用户
+    const passwordHash = hashPassword(password)
+    const { data: newUser, error: createError } = await supabase
+      .from('users')
+      .insert({
+        username: username.toLowerCase(),
+        email: invitation.email,
+        password_hash: passwordHash,
+        display_name: displayName || username
+      })
+      .select('id, username, email, display_name, avatar_url, is_admin')
+      .single()
+    
+    if (createError) {
+      console.error('创建用户失败:', createError)
+      return NextResponse.json(
+        { error: '注册失败，请稍后重试' },
+        { status: 500 }
+      )
+    }
+    
+    // 更新邀请状态为已接受
+    await updateInvitationStatus(invitation.id, 'accepted', newUser.id)
+    
+    // 创建会话
+    const sessionToken = generateSessionToken()
+    const expiresAt = new Date(Date.now() + SESSION_DURATION_MS)
+    
+    const { error: sessionError } = await supabase
+      .from('user_sessions')
+      .insert({
+        user_id: newUser.id,
+        token: sessionToken,
+        expires_at: expiresAt.toISOString()
+      })
+    
+    if (sessionError) {
+      console.error('创建会话失败:', sessionError)
+      // 不阻断注册流程，用户可以手动登录
+    }
+    
+    // 设置 cookie
+    const cookieStore = await cookies()
+    // 只有在HTTPS环境下才设置secure属性
+    const isHttps = process.env.NEXT_PUBLIC_BASE_URL?.startsWith('https://')
+    cookieStore.set(AUTH_COOKIE_NAME, sessionToken, {
+      httpOnly: true,
+      secure: isHttps,
+      sameSite: 'lax',
+      path: '/',
+      expires: expiresAt
+    })
+    
+    return NextResponse.json({
+      success: true,
+      user: newUser,
+      invitation: {
+        email: invitation.email,
+        inviter: invitation.users
+      }
+    })
+    
+  } catch (error) {
+    console.error('邀请注册错误:', error)
+    return NextResponse.json(
+      { error: '服务器错误' },
+      { status: 500 }
+    )
+  }
+}

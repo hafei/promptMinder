@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { LoginForm } from '@/components/auth/auth-forms'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card.jsx'
 import { Button } from '@/components/ui/button'
 
 export default function SignInPage() {

@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast'
 import { Loader2 } from 'lucide-react'
 
 export function LoginForm({ redirectUrl = '/prompts', onSuccess }) {
-  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const { login, refreshSession } = useAuth()
@@ -21,10 +21,15 @@ export function LoginForm({ redirectUrl = '/prompts', onSuccess }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    if (!username || !password) {
+    // 调试：输出当前值
+    console.log('表单提交 - email:', email)
+    console.log('表单提交 - password:', password)
+    
+    if (!email || !password) {
+      console.log('验证失败 - email或password为空')
       toast({
         variant: 'destructive',
-        description: '请输入用户名和密码'
+        description: '请输入登录邮箱和密码'
       })
       return
     }
@@ -32,7 +37,7 @@ export function LoginForm({ redirectUrl = '/prompts', onSuccess }) {
     setIsLoading(true)
     
     try {
-      await login(username, password)
+      await login(email, password)
       toast({ description: '登录成功' })
 
       // Ensure server-set cookie is applied and session is refreshed
@@ -60,15 +65,15 @@ export function LoginForm({ redirectUrl = '/prompts', onSuccess }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="username">用户名</Label>
+        <Label htmlFor="email">邮箱</Label>
         <Input
-          id="username"
-          type="text"
-          placeholder="请输入用户名"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
+          id="email"
+          type="email"
+          placeholder="请输入邮箱"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
           disabled={isLoading}
-          autoComplete="username"
+          autoComplete="email"
         />
       </div>
       <div className="space-y-2">

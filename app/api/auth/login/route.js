@@ -10,23 +10,23 @@ import {
 
 export async function POST(request) {
   try {
-    const { username, password } = await request.json()
+    const { email, password } = await request.json()
     
     // 验证输入
-    if (!username || !password) {
+    if (!email || !password) {
       return NextResponse.json(
-        { error: '用户名和密码不能为空' },
+        { error: '邮箱和密码不能为空' },
         { status: 400 }
       )
     }
     
     const supabase = createSupabaseServerClient()
     
-    // 查找用户
+    // 查找用户（优先使用用户名，如果email字段不存在）
     const { data: user, error: findError } = await supabase
       .from('users')
-      .select('id, username, display_name, avatar_url, is_admin, password_hash')
-      .eq('username', username.toLowerCase())
+      .select('id, username, email, display_name, avatar_url, is_admin, password_hash')
+      .or(`email.eq.${email.toLowerCase()},username.eq.${email.toLowerCase()}`)
       .single()
     
     if (findError || !user) {

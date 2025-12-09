@@ -1,8 +1,7 @@
 # =====================================================
-# PromptMinder Docker Compose 配置
-# 简化版 - 仅包含必需的 Supabase 服务
+# PromptMinder Docker Compose 配置 - 开发环境（仅后端）
+# 用于 npm run dev 开发时，只启动后端服务
 # =====================================================
-
 services:
   # =====================================================
   # 数据库服务
@@ -18,8 +17,8 @@ services:
       - db-data:/var/lib/postgresql/data
       # 使用合并的初始化脚本
       - ./docker/init-db:/docker-entrypoint-initdb.d:ro
-    # ports:
-    #   - '${DB_PORT:-5432}:5432'
+    ports:
+      - '${DB_PORT:-5432}:5432'  # 宿主机可以直连数据库
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-promptminder} -d ${POSTGRES_DB:-promptminder}"]
       interval: 5s
@@ -42,9 +41,9 @@ services:
       KONG_DNS_ORDER: LAST,A,CNAME
     volumes:
       - ./docker/kong/kong.yml:/kong/kong.yml:ro
-    # ports:
-    #   - '8000:8000'   # proxy
-    #   - '8001:8001'   # admin
+    ports:
+      - '8000:8000'   # proxy - 宿主机可访问
+      - '8001:8001'   # admin - 宿主机可访问
     depends_on:
       db:
         condition: service_healthy
@@ -60,33 +59,11 @@ services:
       PGRST_DB_SCHEMA: public
       PGRST_DB_ANON_ROLE: anon
       PGRST_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-key-with-at-least-32-characters-1234}
-    # ports:
-    #   - '3002:3000'
+    ports:
+      - '30000:3000'   # 宿主机可访问
     depends_on:
       db:
         condition: service_healthy
-
-  # =====================================================
-  # MinIO (S3 兼容存储)
-  # =====================================================
-  minio:
-    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
-    # ports:
-    #   - '9000:9000'
-    #   - '9001:9001'  # MinIO Console
-    volumes:
-      - minio-data:/data
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
-      start_period: 10s
 
   # =====================================================
   # Supabase Auth (认证服务)
@@ -98,13 +75,13 @@ services:
       # 数据库连接
       DATABASE_URL: postgresql://${POSTGRES_USER:-promptminder}:${POSTGRES_PASSWORD:-promptminder}@db:5432/${POSTGRES_DB:-promptminder}
       
-      # 站点配置
-      SITE_URL: ${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}
-      
-      # URL 和重定向配置
-      API_EXTERNAL_URL: http://localhost:3000
+      # 站点配置 - 指向宿主机的开发服务器
+      GOTRUE_SITE_URL: ${NEXT_PUBLIC_BASE_URL:-http://localhost:40000}
+      SITE_URL: ${NEXT_PUBLIC_BASE_URL:-http://localhost:40000}
+      API_EXTERNAL_URL: http://localhost:40000
       
       # JWT 配置
+      GOTRUE_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-key-with-at-least-32-characters-1234}
       JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-key-with-at-least-32-characters-1234}
       JWT_EXP: 3600
       
@@ -118,20 +95,14 @@ services:
       GOTRUE_SMTP_USER: ${SMTP_USER:-}
       GOTRUE_SMTP_PASS: ${SMTP_PASSWORD:-}
       GOTRUE_SMTP_ADMIN_EMAIL: ${FROM_EMAIL:-}
-      GOTRUE_MAILER_URLPATHS_CONFIRMATION: ${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}/auth/callback
-      GOTRUE_MAILER_URLPATHS_INVITE: ${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}/invite
-      GOTRUE_MAILER_URLPATHS_RECOVERY: ${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}/auth/reset-password
-      GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: ${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}/auth/email-change
-      
-      # 禁用公开注册
-      GOTRUE_DISABLE_SIGNUP: "false"  # 我们通过代码控制，不是完全禁用
+      GOTRUE_MAILER_URLPATHS_CONFIRMATION: ${NEXT_PUBLIC_BASE_URL:-http://localhost:40000}/auth/callback
+      GOTRUE_MAILER_URLPATHS_INVITE: ${NEXT_PUBLIC_BASE_URL:-http://localhost:40000}/invite
+      GOTRUE_MAILER_URLPATHS_RECOVERY: ${NEXT_PUBLIC_BASE_URL:-http://localhost:40000}/auth/reset-password
+      GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: ${NEXT_PUBLIC_BASE_URL:-http://localhost:40000}/auth/email-change
       
       # 启用邮箱确认
       GOTRUE_MAILER_AUTOCONFIRM: "false"
-      
-      # 外部 OAuth 提供商（可选）
-      GOTRUE_EXTERNAL_GOOGLE_ENABLED: "false"
-      GOTRUE_EXTERNAL_GITHUB_ENABLED: "false"
+      GOTRUE_DISABLE_SIGNUP: "false"
       
       # API 端点
       GOTRUE_API_HOST: 0.0.0.0
@@ -140,8 +111,10 @@ services:
       # 数据库配置
       GOTRUE_DB_DRIVER: postgres
       GOTRUE_DB_DATABASE_URL: postgresql://${POSTGRES_USER:-promptminder}:${POSTGRES_PASSWORD:-promptminder}@db:5432/${POSTGRES_DB:-promptminder}
-    # ports:
-    #   - '9999:9999'
+      GOTRUE_DB_MIGRATIONS_PATH: ""
+      GOTRUE_DB_AUTOMIGRATE: "false"
+    ports:
+      - '9999:9999'   # 宿主机可访问
     depends_on:
       db:
         condition: service_healthy
@@ -153,21 +126,69 @@ services:
       start_period: 30s
 
   # =====================================================
+  # MinIO (S3 兼容存储)
+  # =====================================================
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - '9000:9000'   # 宿主机可访问
+      - '9001:9001'   # MinIO Console - 宿主机可访问
+    volumes:
+      - minio-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 10s
+
+  # =====================================================
+  # Storage API (文件存储服务)
+  # =====================================================
+  storage-api:
+    image: supabase/storage-api:v1.32.0
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-promptminder}:${POSTGRES_PASSWORD:-promptminder}@db:5432/${POSTGRES_DB:-promptminder}
+      ANON_KEY: ${SUPABASE_ANON_KEY}
+      SERVICE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      PGRST_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-key-with-at-least-32-characters-1234}
+      FILE_STORAGE_BACKEND: s3
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      S3_ENDPOINT: http://minio:9000
+      S3_REGION: us-east-1
+      S3_BUCKET: supabase
+      S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - '54321:54321'   # 宿主机可访问
+    depends_on:
+      db:
+        condition: service_healthy
+      postgrest:
+        condition: service_started
+
+  # =====================================================
   # Supabase Studio (管理界面)
   # =====================================================
   studio:
-    image: supabase/studio:v0.24.8
+    image: supabase/studio:2025.12.01-sha-4ad48b7
     restart: unless-stopped
     environment:
       # 数据库连接
       SUPABASE_URL: http://kong:8000
-      SUPABASE_PUBLIC_URL: http://localhost:3000
+      SUPABASE_PUBLIC_URL: http://localhost:40000
       SUPABASE_REST_URL: http://kong:8000/rest/v1/
       SUPABASE_FUNCTIONS_URL: http://kong:8000/functions/v1/
       SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
       SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
       
-      # 直接数据库连接（用于 Studio）
+      # 直接数据库连接
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-promptminder}
       DEFAULT_ORGANIZATION_NAME: PromptMinder
       DEFAULT_PROJECT_NAME: promptminder
@@ -179,8 +200,8 @@ services:
       SUPABASE_DB_USER: ${POSTGRES_USER:-promptminder}
       SUPABASE_DB_PASSWORD: ${POSTGRES_PASSWORD:-promptminder}
       SUPABASE_DB_NAME: ${POSTGRES_DB:-promptminder}
-    # ports:
-    #   - '3333:3333'
+    ports:
+      - '3333:3333'   # 宿主机可访问
     depends_on:
       db:
         condition: service_healthy
@@ -221,7 +242,7 @@ services:
       FLY_APP_NAME: realtime
       FLY_REGION: iad
       SECRET_KEY_BASE: UpNVntn3cDxHJpq19/YCq92dC8lDwqU237EKJ8CrY78hEVNSe8Z9eqZOZInHNtB
-      API_EXTERNAL_URL: http://localhost:3000
+      API_EXTERNAL_URL: http://localhost:40000
       ERL_AFLAGS: -proto_dist inet_tcp
       DNS_NODES: "''"
       LOG_LEVEL: info
@@ -229,6 +250,8 @@ services:
       MAX_CHILDREN: 1000
       ERL_MAX_PORTS: 65536
       ERL_MAX_ETS_TABLES: 65536
+    ports:
+      - '4000:4000'   # 宿主机可访问
     depends_on:
       db:
         condition: service_healthy
@@ -238,67 +261,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-  # =====================================================
-  # Storage API (文件存储服务)
-  # =====================================================
-  storage-api:
-    image: supabase/storage-api:v1.32.0
-    restart: unless-stopped
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-promptminder}:${POSTGRES_PASSWORD:-promptminder}@db:5432/${POSTGRES_DB:-promptminder}
-      ANON_KEY: ${SUPABASE_ANON_KEY}
-      SERVICE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
-      PGRST_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-key-with-at-least-32-characters-1234}
-      FILE_STORAGE_BACKEND: s3
-      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
-      S3_ENDPOINT: http://minio:9000
-      S3_REGION: us-east-1
-      S3_BUCKET: supabase
-      S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
-      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
-    # ports:
-    #   - '54321:54321'
-    depends_on:
-      db:
-        condition: service_healthy
-      postgrest:
-        condition: service_started
-
-  # =====================================================
-  # PromptMinder 应用
-  # =====================================================
-  web:
-    # build:
-    #   context: .
-    #   dockerfile: Dockerfile
-    image: promptminder:v0.1.0
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-      kong:
-        condition: service_started
-      postgrest:
-        condition: service_started
-    environment:
-      NODE_ENV: development
-      # Supabase 连接配置
-      SUPABASE_URL: http://kong:8000
-      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
-      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
-      # 认证配置
-      AUTH_SECRET: ${AUTH_SECRET:-your-auth-secret-key-min-32-chars-here}
-      # 管理员用户名（多个用逗号分隔）
-      ADMIN_USERNAMES: ${ADMIN_USERNAMES:-admin}
-      # 应用配置
-      NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}
-      # AI 服务配置
-      CUSTOM_API_KEY: ${CUSTOM_API_KEY:-}
-      CUSTOM_API_URL: ${CUSTOM_API_URL:-}
-      CUSTOM_MODEL_NAME: ${CUSTOM_MODEL_NAME:-}
-    ports:
-      - '3000:3000'
 
 # =====================================================
 # 数据卷

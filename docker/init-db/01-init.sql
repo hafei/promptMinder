@@ -3,6 +3,10 @@
 -- 此脚本在 Docker 容器首次启动时自动执行
 -- =====================================================
 
+-- 创建 Supabase Auth 所需的 schema
+CREATE SCHEMA IF NOT EXISTS auth;
+CREATE SCHEMA IF NOT EXISTS extensions;
+
 -- 创建 PostgREST 和 Supabase Storage API 所需的角色
 DO $$
 BEGIN
@@ -26,11 +30,112 @@ END
 $$;
 
 -- =====================================================
+-- 为 auth schema 设置权限
+-- =====================================================
+
+-- 授予 schema 使用权限
+GRANT USAGE ON SCHEMA auth TO anon, authenticated, service_role, postgres;
+
+-- 授予创建表的权限（给 service_role）
+GRANT CREATE ON SCHEMA auth TO service_role;
+
+-- 手动创建 Supabase Auth 需要的表（因为我们禁用了自动迁移）
+CREATE TABLE IF NOT EXISTS auth.users (
+    instance_id uuid NULL,
+    id uuid NOT NULL UNIQUE,
+    aud varchar(255) NULL,
+    "role" varchar(255) NULL,
+    email varchar(255) NULL UNIQUE,
+    encrypted_password varchar(255) NULL,
+    confirmed_at timestamptz NULL,
+    invited_at timestamptz NULL,
+    confirmation_token varchar(255) NULL,
+    confirmation_sent_at timestamptz NULL,
+    recovery_token varchar(255) NULL,
+    recovery_sent_at timestamptz NULL,
+    email_change_token varchar(255) NULL,
+    email_change varchar(255) NULL,
+    email_change_sent_at timestamptz NULL,
+    last_sign_in_at timestamptz NULL,
+    raw_app_meta_data jsonb NULL,
+    raw_user_meta_data jsonb NULL,
+    is_super_admin bool NULL,
+    created_at timestamptz NULL,
+    updated_at timestamptz NULL,
+    CONSTRAINT users_pkey PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS users_instance_id_email_idx ON auth.users USING btree (instance_id, email);
+CREATE INDEX IF NOT EXISTS users_instance_id_idx ON auth.users USING btree (instance_id);
+COMMENT ON TABLE auth.users IS 'Auth: Stores user login data within a secure schema.';
+
+-- auth.refresh_tokens definition
+CREATE TABLE IF NOT EXISTS auth.refresh_tokens (
+    instance_id uuid NULL,
+    id bigserial NOT NULL,
+    "token" varchar(255) NULL,
+    user_id varchar(255) NULL,
+    revoked bool NULL,
+    created_at timestamptz NULL,
+    updated_at timestamptz NULL,
+    CONSTRAINT refresh_tokens_pkey PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS refresh_tokens_instance_id_idx ON auth.refresh_tokens USING btree (instance_id);
+CREATE INDEX IF NOT EXISTS refresh_tokens_instance_id_user_id_idx ON auth.refresh_tokens USING btree (instance_id, user_id);
+CREATE INDEX IF NOT EXISTS refresh_tokens_token_idx ON auth.refresh_tokens USING btree (token);
+COMMENT ON TABLE auth.refresh_tokens IS 'Auth: Store of tokens used to refresh JWT tokens once they expire.';
+
+-- auth.instances definition
+CREATE TABLE IF NOT EXISTS auth.instances (
+    id uuid NOT NULL,
+    uuid uuid NULL,
+    raw_base_config text NULL,
+    created_at timestamptz NULL,
+    updated_at timestamptz NULL,
+    CONSTRAINT instances_pkey PRIMARY KEY (id)
+);
+
+COMMENT ON TABLE auth.instances IS 'Auth: Manages users across multiple sites.';
+
+-- auth.audit_log_entries definition
+CREATE TABLE IF NOT EXISTS auth.audit_log_entries (
+    instance_id uuid NULL,
+    id uuid NOT NULL,
+    payload json NULL,
+    created_at timestamptz NULL,
+    CONSTRAINT audit_log_entries_pkey PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS audit_logs_instance_id_idx ON auth.audit_log_entries USING btree (instance_id);
+COMMENT ON TABLE auth.audit_log_entries IS 'Auth: Audit trail for user actions.';
+
+-- auth.schema_migrations definition
+CREATE TABLE IF NOT EXISTS auth.schema_migrations (
+    "version" varchar(255) NOT NULL,
+    CONSTRAINT schema_migrations_pkey PRIMARY KEY ("version")
+);
+
+COMMENT ON TABLE auth.schema_migrations IS 'Auth: Manages updates to auth system.';
+
+-- 创建 auth schema 的基本函数（Supabase Auth 需要的）
+CREATE OR REPLACE FUNCTION auth.uid() 
+RETURNS uuid AS $$
+  SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid;
+$$ LANGUAGE sql stable;
+
+CREATE OR REPLACE FUNCTION auth.role() 
+RETURNS text AS $$
+  SELECT nullif(current_setting('request.jwt.claim.role', true), '')::text;
+$$ LANGUAGE sql stable;
+
+-- =====================================================
 -- 1. 用户表 (users) - 本地认证
 -- =====================================================
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     username VARCHAR(50) NOT NULL UNIQUE,
+    email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     display_name VARCHAR(100),
     avatar_url TEXT,
@@ -50,6 +155,7 @@ CREATE TABLE IF NOT EXISTS user_sessions (
 
 -- 用户相关索引
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_user_sessions_token ON user_sessions(token);
 CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_sessions_expires_at ON user_sessions(expires_at);
@@ -74,6 +180,39 @@ CREATE OR REPLACE FUNCTION cleanup_expired_sessions()
 RETURNS void AS $$
 BEGIN
     DELETE FROM user_sessions WHERE expires_at < NOW();
+END;
+$$ language 'plpgsql';
+
+-- =====================================================
+-- 邀请令牌表 - 用于邮件邀请注册
+-- =====================================================
+CREATE TABLE IF NOT EXISTS user_invitations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) NOT NULL UNIQUE,
+    token VARCHAR(255) NOT NULL UNIQUE,
+    invited_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'expired')),
+    invited_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '7 days'),
+    accepted_at TIMESTAMPTZ,
+    accepted_user_id UUID REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- 邀请相关索引
+CREATE INDEX IF NOT EXISTS idx_user_invitations_email ON user_invitations(email);
+CREATE INDEX IF NOT EXISTS idx_user_invitations_token ON user_invitations(token);
+CREATE INDEX IF NOT EXISTS idx_user_invitations_status ON user_invitations(status);
+CREATE INDEX IF NOT EXISTS idx_user_invitations_expires_at ON user_invitations(expires_at);
+CREATE INDEX IF NOT EXISTS idx_user_invitations_invited_by ON user_invitations(invited_by);
+
+-- 清理过期邀请的函数
+CREATE OR REPLACE FUNCTION cleanup_expired_invitations()
+RETURNS void AS $$
+BEGIN
+    UPDATE user_invitations 
+    SET status = 'expired' 
+    WHERE status = 'pending' 
+    AND expires_at < NOW();
 END;
 $$ language 'plpgsql';
 
@@ -284,17 +423,22 @@ ORDER BY date DESC;
 
 -- 授予 schema 使用权限
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT USAGE ON SCHEMA auth TO anon, authenticated, service_role, postgres;
 
 -- service_role 拥有完整权限
 GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA auth TO service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA auth TO service_role;
 
 -- authenticated 角色拥有基本权限（已认证用户）
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO authenticated;
+GRANT SELECT ON ALL TABLES IN SCHEMA auth TO authenticated;
 
 -- anon 只有读取权限（用于公开数据）
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
+GRANT SELECT ON ALL TABLES IN SCHEMA auth TO anon;
 
 -- 特殊权限：允许匿名用户提交贡献
 GRANT INSERT ON prompt_contributions TO anon;
@@ -311,6 +455,12 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE O
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE ON SEQUENCES TO authenticated;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO anon;
 
+-- 设置 auth schema 的默认权限
+ALTER DEFAULT PRIVILEGES IN SCHEMA auth GRANT ALL ON TABLES TO service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA auth GRANT ALL ON SEQUENCES TO service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA auth GRANT SELECT ON TABLES TO authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA auth GRANT SELECT ON TABLES TO anon;
+
 -- 允许角色切换
 GRANT anon, authenticated, service_role TO authenticator;
 -- 将 postgres 角色授予当前用户（promptminder）
@@ -319,6 +469,34 @@ GRANT postgres TO CURRENT_USER;
 -- =====================================================
 -- 初始化完成
 -- =====================================================
+
+-- 创建邀请邮件表视图（方便查询）
+CREATE OR REPLACE VIEW invitation_stats AS
+SELECT 
+    status,
+    COUNT(*) as count,
+    DATE_TRUNC('day', invited_at) as date
+FROM user_invitations 
+GROUP BY status, DATE_TRUNC('day', invited_at)
+ORDER BY date DESC;
+
+-- 创建用户邀请关系视图
+CREATE OR REPLACE VIEW user_invitation_summary AS
+SELECT 
+    u.id as user_id,
+    u.username,
+    u.email,
+    u.display_name,
+    u.created_at,
+    inv.email as invited_by_email,
+    inv_users.display_name as invited_by_name,
+    inv.invited_at as invitation_sent_at,
+    inv.accepted_at as invitation_accepted_at
+FROM users u
+LEFT JOIN user_invitations inv ON u.id = inv.accepted_user_id
+LEFT JOIN users inv_users ON inv.invited_by = inv_users.id
+ORDER BY u.created_at DESC;
+
 DO $$
 BEGIN
     RAISE NOTICE 'PromptMinder 数据库初始化完成！';

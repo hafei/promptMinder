@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { LogOut, User } from 'lucide-react'
+import { LogOut, User, Users, Settings } from 'lucide-react'
 
 // 登录按钮
 export function SignInButton({ children, mode = 'redirect', redirectUrl = '/prompts' }) {
@@ -69,6 +69,7 @@ export function SignUpButton({ children, mode = 'redirect', redirectUrl = '/prom
 // 用户按钮（头像下拉菜单）
 export function UserButton({ appearance }) {
   const { user, logout } = useAuth()
+  const isAdmin = user?.is_admin
 
   if (!user) return null
 
@@ -106,6 +107,19 @@ export function UserButton({ appearance }) {
           </div>
         </div>
         <DropdownMenuSeparator />
+        
+        {isAdmin && (
+          <>
+            <DropdownMenuItem asChild className="cursor-pointer">
+              <a href="/admin/invitations" className="flex items-center">
+                <Users className="mr-2 h-4 w-4" />
+                邀请管理
+              </a>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
+        
         <DropdownMenuItem onClick={handleLogout} className="text-red-600 cursor-pointer">
           <LogOut className="mr-2 h-4 w-4" />
           退出登录
