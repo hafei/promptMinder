@@ -201,7 +201,7 @@ services:
       SUPABASE_DB_PASSWORD: ${POSTGRES_PASSWORD:-promptminder}
       SUPABASE_DB_NAME: ${POSTGRES_DB:-promptminder}
     ports:
-      - '3333:3333'   # 宿主机可访问
+      - '3333:3000'   # 宿主机可访问
     depends_on:
       db:
         condition: service_healthy
