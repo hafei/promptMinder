@@ -3,7 +3,7 @@ import { createSupabaseServerClient } from '@/lib/supabaseServer.js'
 import { TeamService } from '@/lib/team-service.js'
 import { handleApiError } from '@/lib/handle-api-error.js'
 import { requireUserId } from '@/lib/auth.js'
-import { userClient } from '@/lib/local-auth/user-service.js'
+import { userClient } from '@/lib/user-service.js'
 
 async function getTeamId(paramsPromise) {
   const { teamId } = await paramsPromise

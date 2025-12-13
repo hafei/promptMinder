@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireUserId } from '@/lib/auth.js'
 import { resolveTeamContext } from '@/lib/team-request.js'
 import { handleApiError } from '@/lib/handle-api-error.js'
-import { getUserList } from '@/lib/local-auth/user-service.js'
+import { getUserList } from '@/lib/user-service.js'
 import { generateUUID } from '@/lib/utils'
 
 function applyPromptFilters(query, { teamId, userId, tag, search }) {
@@ -71,16 +71,16 @@ export async function GET(request) {
     }
 
     let prompts = promptsResult.data || []
-    
+
     // Enrich prompts with creator info if possible
     if (prompts.length > 0) {
       const userIds = Array.from(new Set(prompts.map(p => p.created_by).filter(Boolean)))
-      
+
       if (userIds.length > 0) {
         try {
           const users = await getUserList(userIds)
           const userMap = new Map()
-          
+
           users.forEach(user => {
             userMap.set(user.id, {
               id: user.id,
