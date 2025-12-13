@@ -134,8 +134,8 @@ services:
       NODE_ENV: development
       # Supabase 连接配置
       SUPABASE_URL: http://kong:8000
-      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
-      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
       # 认证配置
       AUTH_SECRET: ${AUTH_SECRET:-your-auth-secret-key-min-32-chars-here}
       # 管理员用户名（多个用逗号分隔）
