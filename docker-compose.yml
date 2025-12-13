@@ -1,73 +1,525 @@
 # =====================================================
 # PromptMinder Docker Compose 配置
-# 简化版 - 仅包含必需的 Supabase 服务
+# 集成官方 Supabase 配置
 # =====================================================
+
+name: promptminder
 
 services:
   # =====================================================
-  # 数据库服务
+  # Supabase Studio (管理界面)
   # =====================================================
-  db:
-    image: postgres:15-alpine
+  studio:
+    container_name: promptminder-studio
+    image: supabase/studio:2025.12.09-sha-434634f
     restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-promptminder}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-promptminder}
-      POSTGRES_DB: ${POSTGRES_DB:-promptminder}
-    volumes:
-      - db-data:/var/lib/postgresql/data
-      # 使用合并的初始化脚本
-      - ./docker/init-db:/docker-entrypoint-initdb.d:ro
-    # ports:
-    #   - '${DB_PORT:-5432}:5432'
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-promptminder} -d ${POSTGRES_DB:-promptminder}"]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://studio:3000/api/platform/profile').then((r) => {if (r.status !== 200) throw new Error(r.status)})"
+        ]
+      timeout: 10s
       interval: 5s
-      timeout: 5s
-      retries: 10
+      retries: 3
+    depends_on:
+      analytics:
+        condition: service_healthy
+    environment:
+      HOSTNAME: "::"
+      STUDIO_PG_META_URL: http://meta:8080
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_HOST: ${POSTGRES_HOST:-db}
+      POSTGRES_DB: ${POSTGRES_DB:-promptminder}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-promptminder}
+      PG_META_CRYPTO_KEY: ${PG_META_CRYPTO_KEY}
+      DEFAULT_ORGANIZATION_NAME: ${STUDIO_DEFAULT_ORGANIZATION:-PromptMinder}
+      DEFAULT_PROJECT_NAME: ${STUDIO_DEFAULT_PROJECT:-Default Project}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_PUBLIC_URL: ${SUPABASE_PUBLIC_URL:-http://localhost:8000}
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      AUTH_JWT_SECRET: ${JWT_SECRET}
+      LOGFLARE_API_KEY: ${LOGFLARE_PUBLIC_ACCESS_TOKEN}
+      LOGFLARE_PUBLIC_ACCESS_TOKEN: ${LOGFLARE_PUBLIC_ACCESS_TOKEN}
+      LOGFLARE_PRIVATE_ACCESS_TOKEN: ${LOGFLARE_PRIVATE_ACCESS_TOKEN}
+      LOGFLARE_URL: http://analytics:4000
+      NEXT_PUBLIC_ENABLE_LOGS: true
+      NEXT_ANALYTICS_BACKEND_PROVIDER: postgres
+    ports:
+      - "${STUDIO_PORT:-3000}:3000"
+    # volumes:
+    #   - ./docker/studio:/app/config:ro
 
   # =====================================================
   # Kong API 网关 (Supabase 入口)
   # =====================================================
   kong:
+    container_name: promptminder-kong
     image: kong:3.0
     restart: unless-stopped
+    ports:
+      - ${KONG_HTTP_PORT:-8000}:8000/tcp
+      - ${KONG_HTTPS_PORT:-8443}:8443/tcp
+    volumes:
+      # https://github.com/supabase/supabase/issues/12661
+      - ./volumes/api/kong.yml:/home/kong/temp.yml:ro,z
+      - ./docker/kong/kong.yml:/kong/kong.yml:ro
+    depends_on:
+      analytics:
+        condition: service_healthy
+      db:
+        condition: service_healthy
     environment:
       KONG_DATABASE: "off"
-      KONG_DECLARATIVE_CONFIG: /kong/kong.yml
+      KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
       KONG_PROXY_ACCESS_LOG: /dev/stdout
       KONG_ADMIN_ACCESS_LOG: /dev/stdout
       KONG_PROXY_ERROR_LOG: /dev/stderr
       KONG_ADMIN_ERROR_LOG: /dev/stderr
       KONG_DNS_ORDER: LAST,A,CNAME
-    volumes:
-      - ./docker/kong/kong.yml:/kong/kong.yml:ro
-    # ports:
-    #   - '8000:8000'   # proxy
-    #   - '8001:8001'   # admin
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl,basic-auth,request-termination,ip-restriction
+      KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
+      KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      DASHBOARD_USERNAME: ${DASHBOARD_USERNAME:-supabase}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD}
+    # https://unix.stackexchange.com/a/294837
+    entrypoint: bash -c 'eval "echo \"$$(cat ~/temp.yml)\"" > ~/kong.yml && /docker-entrypoint.sh kong docker-start'
+
+  # =====================================================
+  # 认证服务 (GoTrue)
+  # =====================================================
+  auth:
+    container_name: promptminder-auth
+    image: supabase/gotrue:v2.183.0
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:9999/health"
+        ]
+      timeout: 5s
+      interval: 5s
+      retries: 3
     depends_on:
       db:
         condition: service_healthy
+      analytics:
+        condition: service_healthy
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: ${API_EXTERNAL_URL:-http://localhost:8000}
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD:-promptminder}@${POSTGRES_HOST:-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-promptminder}
+      GOTRUE_SITE_URL: ${SITE_URL:-http://localhost:3000}
+      GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS}
+      GOTRUE_DISABLE_SIGNUP: ${DISABLE_SIGNUP:-false}
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: ${JWT_EXPIRY:-3600}
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: ${ENABLE_EMAIL_SIGNUP:-true}
+      GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED: ${ENABLE_ANONYMOUS_USERS:-false}
+      GOTRUE_MAILER_AUTOCONFIRM: ${ENABLE_EMAIL_AUTOCONFIRM:-false}
+      GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_ADMIN_EMAIL}
+      GOTRUE_SMTP_HOST: ${SMTP_HOST}
+      GOTRUE_SMTP_PORT: ${SMTP_PORT}
+      GOTRUE_SMTP_USER: ${SMTP_USER}
+      GOTRUE_SMTP_PASS: ${SMTP_PASS}
+      GOTRUE_SMTP_SENDER_NAME: ${SMTP_SENDER_NAME}
+      GOTRUE_MAILER_URLPATHS_INVITE: ${MAILER_URLPATHS_INVITE}
+      GOTRUE_MAILER_URLPATHS_CONFIRMATION: ${MAILER_URLPATHS_CONFIRMATION}
+      GOTRUE_MAILER_URLPATHS_RECOVERY: ${MAILER_URLPATHS_RECOVERY}
+      GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: ${MAILER_URLPATHS_EMAIL_CHANGE}
+      GOTRUE_EXTERNAL_PHONE_ENABLED: ${ENABLE_PHONE_SIGNUP:-false}
+      GOTRUE_SMS_AUTOCONFIRM: ${ENABLE_PHONE_AUTOCONFIRM:-false}
+    # ports:
+    #   - '9999:9999'
 
   # =====================================================
-  # PostgREST (REST API)
+  # REST API (PostgREST)
   # =====================================================
   postgrest:
+    container_name: promptminder-postgrest
     image: postgrest/postgrest:v14.1
     restart: unless-stopped
-    environment:
-      PGRST_DB_URI: postgresql://${POSTGRES_USER:-promptminder}:${POSTGRES_PASSWORD:-promptminder}@db:5432/${POSTGRES_DB:-promptminder}
-      PGRST_DB_SCHEMA: public
-      PGRST_DB_ANON_ROLE: anon
-      PGRST_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-key-with-at-least-32-characters-1234}
-    # ports:
-    #   - '3002:3000'
     depends_on:
       db:
         condition: service_healthy
+      analytics:
+        condition: service_healthy
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD:-promptminder}@${POSTGRES_HOST:-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-promptminder}
+      PGRST_DB_SCHEMAS: ${PGRST_DB_SCHEMAS:-public}
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET}
+      PGRST_APP_SETTINGS_JWT_EXP: ${JWT_EXPIRY:-3600}
+    command: ["postgrest"]
+    # ports:
+    #   - '3002:3000'
 
   # =====================================================
-  # MinIO (S3 兼容存储)
+  # 实时服务
+  # =====================================================
+  realtime:
+    container_name: realtime-dev.promptminder-realtime
+    image: supabase/realtime:v2.68.0
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      analytics:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -sSfL --head -o /dev/null -H \"Authorization: Bearer ${ANON_KEY}\" http://localhost:4000/api/tenants/realtime-dev/health"
+        ]
+      timeout: 5s
+      interval: 5s
+      retries: 3
+    environment:
+      PORT: 4000
+      DB_HOST: ${POSTGRES_HOST:-db}
+      DB_PORT: ${POSTGRES_PORT:-5432}
+      DB_USER: supabase_admin
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-promptminder}
+      DB_NAME: ${POSTGRES_DB:-promptminder}
+      DB_AFTER_CONNECT_QUERY: 'SET search_path TO _realtime'
+      DB_ENC_KEY: supabaserealtime
+      API_JWT_SECRET: ${JWT_SECRET}
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+      ERL_AFLAGS: -proto_dist inet_tcp
+      DNS_NODES: "''"
+      RLIMIT_NOFILE: "10000"
+      APP_NAME: realtime
+      SEED_SELF_HOST: "true"
+      RUN_JANITOR: "true"
+    # ports:
+    #   - '4000:4000'
+
+  # =====================================================
+  # 数据库服务
+  # =====================================================
+  db:
+    container_name: promptminder-db
+    image: supabase/postgres:15.8.1.085
+    restart: unless-stopped
+    environment:
+      # 使用 Supabase 默认的用户配置
+      POSTGRES_USER: supabase_admin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-promptminder}
+      POSTGRES_DB: ${POSTGRES_DB:-promptminder}
+      POSTGRES_HOST: /var/run/postgresql
+      PGPORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-promptminder}
+      PGDATABASE: ${POSTGRES_DB:-promptminder}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXP: ${JWT_EXPIRY:-3600}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      # 初始化脚本 - 必须直接在 /docker-entrypoint-initdb.d/ 目录下，按字母序执行
+      # 00: 创建 _supabase 数据库和所有必要的角色、schemas
+      - ./volumes/db/00-init-supabase.sql:/docker-entrypoint-initdb.d/00-init-supabase.sql
+      # 05: 在主数据库中初始化 extensions 和 supabase_functions schemas
+      - ./volumes/db/05-init-main-db-schemas.sql:/docker-entrypoint-initdb.d/05-init-main-db-schemas.sql
+      # 10: 配置所有数据库用户的密码
+      - ./volumes/db/roles.sql:/docker-entrypoint-initdb.d/10-roles.sql
+      # 11: 配置 JWT 相关的数据库设置
+      - ./volumes/db/jwt.sql:/docker-entrypoint-initdb.d/11-jwt.sql
+      # 12: Webhooks 相关的函数和触发器（需要 extensions schema）
+      - ./volumes/db/webhooks.sql:/docker-entrypoint-initdb.d/12-webhooks.sql
+      # 20: 日志系统初始化（在 _supabase 中）
+      - ./volumes/db/logs.sql:/docker-entrypoint-initdb.d/20-logs.sql
+      # 21: 连接池初始化（在 _supabase 中）
+      - ./volumes/db/pooler.sql:/docker-entrypoint-initdb.d/21-pooler.sql
+      # 30: 实时功能初始化（在 _supabase 中）
+      - ./volumes/db/realtime.sql:/docker-entrypoint-initdb.d/30-realtime.sql
+      # 持久化配置
+      - db-config:/etc/postgresql-custom
+    # ports:
+    #   - '${DB_PORT:-5432}:5432'
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "supabase_admin", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    depends_on:
+      vector:
+        condition: service_healthy
+    command:
+      [
+        "postgres",
+        "-c",
+        "config_file=/etc/postgresql/postgresql.conf",
+        "-c",
+        "log_min_messages=fatal"
+      ]
+
+  # =====================================================
+  # 存储服务 (Storage API)
+  # =====================================================
+  storage:
+    container_name: promptminder-storage
+    image: supabase/storage-api:v1.33.0
+    restart: unless-stopped
+    volumes:
+      - ./volumes/storage:/var/lib/storage:z
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://storage:5000/status"
+        ]
+      timeout: 5s
+      interval: 5s
+      retries: 3
+    depends_on:
+      db:
+        condition: service_healthy
+      postgrest:
+        condition: service_started
+      imgproxy:
+        condition: service_started
+    environment:
+      ANON_KEY: ${ANON_KEY}
+      SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      POSTGREST_URL: http://postgrest:3000
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD:-promptminder}@${POSTGRES_HOST:-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-promptminder}
+      REQUEST_ALLOW_X_FORWARDED_PATH: "true"
+      FILE_SIZE_LIMIT: 52428800
+      STORAGE_BACKEND: file
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      TENANT_ID: stub
+      REGION: stub
+      GLOBAL_S3_BUCKET: stub
+      ENABLE_IMAGE_TRANSFORMATION: "true"
+      IMGPROXY_URL: http://imgproxy:5001
+    # ports:
+    #   - '5000:5000'
+
+  # =====================================================
+  # 图片处理代理服务
+  # =====================================================
+  imgproxy:
+    container_name: promptminder-imgproxy
+    image: darthsim/imgproxy:v3.8.0
+    restart: unless-stopped
+    volumes:
+      - ./volumes/storage:/var/lib/storage:z
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "imgproxy",
+          "health"
+        ]
+      timeout: 5s
+      interval: 5s
+      retries: 3
+    environment:
+      IMGPROXY_BIND: ":5001"
+      IMGPROXY_LOCAL_FILESYSTEM_ROOT: /
+      IMGPROXY_USE_ETAG: "true"
+      IMGPROXY_ENABLE_WEBP_DETECTION: ${IMGPROXY_ENABLE_WEBP_DETECTION:-true}
+
+  # =====================================================
+  # 数据库元数据服务
+  # =====================================================
+  meta:
+    container_name: promptminder-meta
+    image: supabase/postgres-meta:v0.93.1
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      analytics:
+        condition: service_healthy
+    environment:
+      PG_META_PORT: 8080
+      PG_META_DB_HOST: ${POSTGRES_HOST:-db}
+      PG_META_DB_PORT: ${POSTGRES_PORT:-5432}
+      PG_META_DB_NAME: ${POSTGRES_DB:-promptminder}
+      PG_META_DB_USER: supabase_admin
+      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD:-promptminder}
+      CRYPTO_KEY: ${PG_META_CRYPTO_KEY}
+
+  # =====================================================
+  # Edge Functions
+  # =====================================================
+  functions:
+    container_name: promptminder-edge-functions
+    image: supabase/edge-runtime:v1.69.28
+    restart: unless-stopped
+    volumes:
+      - ./volumes/functions:/home/deno/functions:Z
+    depends_on:
+      analytics:
+        condition: service_healthy
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+      SUPABASE_DB_URL: postgresql://postgres:${POSTGRES_PASSWORD:-promptminder}@${POSTGRES_HOST:-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-promptminder}
+      VERIFY_JWT: "${FUNCTIONS_VERIFY_JWT:-true}"
+    command:
+      [
+        "start",
+        "--main-service",
+        "/home/deno/functions/main"
+      ]
+
+  # =====================================================
+  # 分析/日志服务
+  # =====================================================
+  analytics:
+    container_name: promptminder-analytics
+    image: supabase/logflare:1.26.25
+    restart: unless-stopped
+    ports:
+      - 4000:4000
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "http://localhost:4000/health"
+        ]
+      timeout: 5s
+      interval: 5s
+      retries: 10
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      LOGFLARE_NODE_HOST: 127.0.0.1
+      DB_USERNAME: supabase_admin
+      DB_DATABASE: _supabase
+      DB_HOSTNAME: ${POSTGRES_HOST:-db}
+      DB_PORT: ${POSTGRES_PORT:-5432}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-promptminder}
+      DB_SCHEMA: _analytics
+      LOGFLARE_PUBLIC_ACCESS_TOKEN: ${LOGFLARE_PUBLIC_ACCESS_TOKEN}
+      LOGFLARE_PRIVATE_ACCESS_TOKEN: ${LOGFLARE_PRIVATE_ACCESS_TOKEN}
+      LOGFLARE_SINGLE_TENANT: true
+      LOGFLARE_SUPABASE_MODE: true
+      POSTGRES_BACKEND_URL: postgresql://supabase_admin:${POSTGRES_PASSWORD:-promptminder}@${POSTGRES_HOST:-db}:${POSTGRES_PORT:-5432}/_supabase
+      POSTGRES_BACKEND_SCHEMA: _analytics
+      LOGFLARE_FEATURE_FLAG_OVERRIDE: multibackend=true
+
+  # =====================================================
+  # 日志收集服务
+  # =====================================================
+  vector:
+    container_name: promptminder-vector
+    image: timberio/vector:0.28.1-alpine
+    restart: unless-stopped
+    volumes:
+      - ./volumes/logs/vector.yml:/etc/vector/vector.yml:ro,z
+      - ${DOCKER_SOCKET_LOCATION:-/var/run/docker.sock}:/var/run/docker.sock:ro,z
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://vector:9001/health"
+        ]
+      timeout: 5s
+      interval: 5s
+      retries: 3
+    environment:
+      LOGFLARE_PUBLIC_ACCESS_TOKEN: ${LOGFLARE_PUBLIC_ACCESS_TOKEN}
+    command:
+      [
+        "--config",
+        "/etc/vector/vector.yml"
+      ]
+    security_opt:
+      - "label=disable"
+
+  # =====================================================
+  # 数据库连接池
+  # =====================================================
+  supavisor:
+    container_name: promptminder-pooler
+    image: supabase/supavisor:2.7.4
+    restart: unless-stopped
+    ports:
+      - ${POSTGRES_PORT:-5432}:5432
+      - ${POOLER_PROXY_PORT_TRANSACTION:-6543}:6543
+    volumes:
+      - ./volumes/pooler/pooler.exs:/etc/pooler/pooler.exs:ro,z
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-sSfL",
+          "--head",
+          "-o",
+          "/dev/null",
+          "http://127.0.0.1:4000/api/health"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      db:
+        condition: service_healthy
+      analytics:
+        condition: service_healthy
+    environment:
+      PORT: 4000
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-promptminder}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-promptminder}
+      DATABASE_URL: ecto://supabase_admin:${POSTGRES_PASSWORD:-promptminder}@${POSTGRES_HOST:-db}:${POSTGRES_PORT:-5432}/_supabase
+      CLUSTER_POSTGRES: true
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+      VAULT_ENC_KEY: ${VAULT_ENC_KEY}
+      API_JWT_SECRET: ${JWT_SECRET}
+      METRICS_JWT_SECRET: ${JWT_SECRET}
+      REGION: local
+      ERL_AFLAGS: -proto_dist inet_tcp
+      POOLER_TENANT_ID: ${POOLER_TENANT_ID}
+      POOLER_DEFAULT_POOL_SIZE: ${POOLER_DEFAULT_POOL_SIZE:-15}
+      POOLER_MAX_CLIENT_CONN: ${POOLER_MAX_CLIENT_CONN:-100}
+      POOLER_POOL_MODE: transaction
+      DB_POOL_SIZE: ${POOLER_DB_POOL_SIZE:-5}
+    command:
+      [
+        "/bin/sh",
+        "-c",
+        "/app/bin/migrate && /app/bin/supavisor eval \"$$(cat /etc/pooler/pooler.exs)\" && /app/bin/server"
+      ]
+
+  # =====================================================
+  # MinIO (S3 兼容存储) - 可选
   # =====================================================
   minio:
     image: minio/minio:RELEASE.2025-09-07T16-13-09Z
@@ -75,9 +527,9 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
-    # ports:
-    #   - '9000:9000'
-    #   - '9001:9001'  # MinIO Console
+    ports:
+      - '9000:9000'
+      - '9001:9001'  # MinIO Console
     volumes:
       - minio-data:/data
     restart: unless-stopped
@@ -87,37 +539,14 @@ services:
       timeout: 20s
       retries: 3
       start_period: 10s
-
-  # =====================================================
-  # Storage API (文件存储服务)
-  # =====================================================
-  storage-api:
-    image: supabase/storage-api:v1.32.0
-    restart: unless-stopped
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-promptminder}:${POSTGRES_PASSWORD:-promptminder}@db:5432/${POSTGRES_DB:-promptminder}
-      ANON_KEY: ${SUPABASE_ANON_KEY}
-      SERVICE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
-      PGRST_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-key-with-at-least-32-characters-1234}
-      FILE_STORAGE_BACKEND: s3
-      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
-      S3_ENDPOINT: http://minio:9000
-      S3_REGION: us-east-1
-      S3_BUCKET: supabase
-      S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
-      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
-    # ports:
-    #   - '54321:54321'
-    depends_on:
-      db:
-        condition: service_healthy
-      postgrest:
-        condition: service_started
+    profiles:
+      - minio  # 使用 profile 控制，默认不启动
 
   # =====================================================
   # PromptMinder 应用
   # =====================================================
   web:
+    container_name: promptminder-app
     # build:
     #   context: .
     #   dockerfile: Dockerfile
@@ -134,8 +563,8 @@ services:
       NODE_ENV: development
       # Supabase 连接配置
       SUPABASE_URL: http://kong:8000
-      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
-      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
       # 认证配置
       AUTH_SECRET: ${AUTH_SECRET:-your-auth-secret-key-min-32-chars-here}
       # 管理员用户名（多个用逗号分隔）
@@ -147,7 +576,7 @@ services:
       CUSTOM_API_URL: ${CUSTOM_API_URL:-}
       CUSTOM_MODEL_NAME: ${CUSTOM_MODEL_NAME:-}
     ports:
-      - '3000:3000'
+      - '3001:3000'  # 修改端口避免与 Studio 冲突
 
 # =====================================================
 # 数据卷
@@ -157,3 +586,89 @@ volumes:
     name: promptminder-db-data
   minio-data:
     name: promptminder-minio-data
+  db-config:
+
+# =====================================================
+# 所需环境变量说明
+# =====================================================
+#
+# 基础配置：
+# - POSTGRES_HOST: 数据库主机 (默认: db)
+# - POSTGRES_PORT: 数据库端口 (默认: 5432)
+# - POSTGRES_USER: 数据库用户名 (默认: promptminder)
+# - POSTGRES_PASSWORD: 数据库密码 (默认: promptminder)
+# - POSTGRES_DB: 数据库名称 (默认: promptminder)
+#
+# JWT 认证配置：
+# - JWT_SECRET: JWT 密钥 (必须设置，至少32字符)
+# - JWT_EXPIRY: JWT 过期时间 (默认: 3600)
+#
+# Supabase 密钥：
+# - ANON_KEY: Supabase 匿名密钥 (必须设置)
+# - SERVICE_ROLE_KEY: Supabase 服务角色密钥 (必须设置)
+#
+# API 网关配置：
+# - KONG_HTTP_PORT: Kong HTTP 端口 (默认: 8000)
+# - KONG_HTTPS_PORT: Kong HTTPS 端口 (默认: 8443)
+#
+# Studio 配置：
+# - STUDIO_PORT: Studio 端口 (默认: 3000)
+# - STUDIO_DEFAULT_ORGANIZATION: 默认组织名 (默认: PromptMinder)
+# - STUDIO_DEFAULT_PROJECT: 默认项目名 (默认: Default Project)
+# - PG_META_CRYPTO_KEY: Postgres Meta 加密密钥 (必须设置)
+#
+# 邮件配置 (可选)：
+# - SMTP_ADMIN_EMAIL: SMTP 管理员邮箱
+# - SMTP_HOST: SMTP 服务器地址
+# - SMTP_PORT: SMTP 端口
+# - SMTP_USER: SMTP 用户名
+# - SMTP_PASS: SMTP 密码
+# - SMTP_SENDER_NAME: 发件人名称
+# - ENABLE_EMAIL_SIGNUP: 启用邮箱注册 (默认: true)
+# - ENABLE_EMAIL_AUTOCONFIRM: 自动确认邮箱 (默认: false)
+#
+# 短信配置 (可选)：
+# - ENABLE_PHONE_SIGNUP: 启用手机注册 (默认: false)
+# - ENABLE_PHONE_AUTOCONFIRM: 自动确认手机 (默认: false)
+#
+# 日志分析配置：
+# - LOGFLARE_PUBLIC_ACCESS_TOKEN: Logflare 公共访问令牌 (必须设置)
+# - LOGFLARE_PRIVATE_ACCESS_TOKEN: Logflare 私有访问令牌 (必须设置)
+#
+# 数据库连接池配置：
+# - POOLER_PROXY_PORT_TRANSACTION: 连接池事务端口 (默认: 6543)
+# - POOLER_TENANT_ID: 连接池租户 ID
+# - POOLER_DEFAULT_POOL_SIZE: 默认连接池大小 (默认: 15)
+# - POOLER_MAX_CLIENT_CONN: 最大客户端连接数 (默认: 100)
+# - POOLER_DB_POOL_SIZE: 数据库连接池大小 (默认: 5)
+#
+# 应用配置：
+# - API_EXTERNAL_URL: API 外部 URL (默认: http://localhost:8000)
+# - SITE_URL: 网站 URL (默认: http://localhost:3000)
+# - SUPABASE_PUBLIC_URL: Supabase 公共 URL (默认: http://localhost:8000)
+# - DASHBOARD_USERNAME: 仪表板用户名 (默认: supabase)
+# - DASHBOARD_PASSWORD: 仪表板密码 (必须设置)
+#
+# 其他配置：
+# - OPENAI_API_KEY: OpenAI API 密钥 (可选，用于 AI 功能)
+# - SECRET_KEY_BASE: 基础密钥 (必须设置)
+# - VAULT_ENC_KEY: 保险箱加密密钥 (必须设置)
+# - DOCKER_SOCKET_LOCATION: Docker 套接字位置 (默认: /var/run/docker.sock)
+# - IMGPROXY_ENABLE_WEBP_DETECTION: 启用 WebP 检测 (默认: true)
+# - FUNCTIONS_VERIFY_JWT: 验证 Edge Functions JWT (默认: true)
+# - PGRST_DB_SCHEMAS: PostgREST 数据库架构 (默认: public)
+# - ADDITIONAL_REDIRECT_URLS: 额外的重定向 URL
+# - DISABLE_SIGNUP: 禁用注册 (默认: false)
+# - ENABLE_ANONYMOUS_USERS: 启用匿名用户 (默认: false)
+#
+# PromptMinder 应用配置：
+# - AUTH_SECRET: 应用认证密钥 (至少32字符)
+# - ADMIN_USERNAMES: 管理员用户名列表 (默认: admin)
+# - NEXT_PUBLIC_BASE_URL: 应用基础 URL (默认: http://localhost:3000)
+# - CUSTOM_API_KEY: 自定义 API 密钥
+# - CUSTOM_API_URL: 自定义 API URL
+# - CUSTOM_MODEL_NAME: 自定义模型名称
+#
+# MinIO 配置 (可选)：
+# - MINIO_ROOT_USER: MinIO 根用户名 (默认: minioadmin)
+# - MINIO_ROOT_PASSWORD: MinIO 根密码 (默认: minioadmin)
