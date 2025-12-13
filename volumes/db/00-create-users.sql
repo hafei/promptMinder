@@ -71,4 +71,8 @@ $$;
 
 -- 授予权限
 GRANT ALL PRIVILEGES ON DATABASE promptminder TO supabase_admin;
+GRANT CONNECT ON DATABASE promptminder TO supabase_auth_admin;
+GRANT CONNECT ON DATABASE promptminder TO supabase_functions_admin;
+GRANT CONNECT ON DATABASE promptminder TO supabase_storage_admin;
+GRANT CONNECT ON DATABASE promptminder TO authenticator;
 GRANT ALL PRIVILEGES ON DATABASE postgres TO postgres;
