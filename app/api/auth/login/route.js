@@ -11,7 +11,7 @@ import {
 export async function POST(request) {
   try {
     const { username, password } = await request.json()
-    
+    console.log(username, password)
     // 验证输入
     if (!username || !password) {
       return NextResponse.json(

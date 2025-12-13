@@ -349,3 +349,15 @@ promptMinder/
 docker-compose exec db psql -U promptminder -d promptminder -c "GRANT UPDATE ON prompt_contributions TO anon; GRANT INSERT ON prompts TO anon;"
 
 docker-compose exec db psql -U promptminder -d promptminder -c "GRANT INSERT ON tags TO anon; GRANT DELETE ON tags TO anon;"
+
+
+
+
+
+
+npm install jsonwebtoken
+
+node -e "const jwt = require('jsonwebtoken'); const secret = 'super-secret-jwt-key-with-at-least-32-characters-1234'; const anon = jwt.sign({role:'anon',iss:'supabase',iat:Math.floor(Date.now()/1000),exp:Math.floor(Date.now()/1000)+3600*24*365}, secret); const service = jwt.sign({role:'service_role',iss:'supabase',iat:Math.floor(Date.now()/1000),exp:Math.floor(Date.now()/1000)+3600*24*365}, secret); console.log('ANON_KEY=' + anon); console.log('SERVICE_ROLE_KEY=' + service);"
+
+ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzY1NjM0MDMyLCJleHAiOjE3OTcxNzAwMzJ9.EY31L6e8y5KYrnwQ5zRVhK415wY_lb8Mu1BwVd88BV0
+SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3NjU2MzQwMzIsImV4cCI6MTc5NzE3MDAzMn0.CicU89LY8wgYgP6yAldIfveaqHZ1FQxD1hqfnaQ7YVc

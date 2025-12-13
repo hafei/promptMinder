@@ -535,36 +535,36 @@ services:
   # =====================================================
   # PromptMinder 应用
   # =====================================================
-  # web:
-  #   # build:
-  #   #   context: .
-  #   #   dockerfile: Dockerfile
-  #   image: promptminder:v0.1.0
-  #   restart: unless-stopped
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #     kong:
-  #       condition: service_started
-  #     rest:
-  #       condition: service_started
-  #   environment:
-  #     NODE_ENV: development
-  #     # Supabase 连接配置
-  #     SUPABASE_URL: http://kong:8000
-  #     SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
-  #     SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
-  #     # 认证配置
-  #     AUTH_SECRET: ${AUTH_SECRET:-your-auth-secret-key-min-32-chars-here}
-  #     # 管理员用户名（多个用逗号分隔）
-  #     ADMIN_USERNAMES: ${ADMIN_USERNAMES:-admin}
-  #     # 应用配置
-  #     NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}
-  #     # AI 服务配置
-  #     CUSTOM_API_KEY: ${CUSTOM_API_KEY:-}
-  #     CUSTOM_API_URL: ${CUSTOM_API_URL:-}
-  #     CUSTOM_MODEL_NAME: ${CUSTOM_MODEL_NAME:-}
-  #   ports:
-  #     - '3000:3000'
+  web:
+     # build:
+     #   context: .
+     #   dockerfile: Dockerfile
+     image: promptminder:v0.1.0
+     restart: unless-stopped
+     depends_on:
+       db:
+         condition: service_healthy
+       kong:
+         condition: service_started
+       rest:
+         condition: service_started
+     environment:
+       NODE_ENV: development
+       # Supabase 连接配置
+       SUPABASE_URL: http://kong:8000
+       SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+       # 认证配置
+       AUTH_SECRET: ${AUTH_SECRET:-your-auth-secret-key-min-32-chars-here}
+       # 管理员用户名（多个用逗号分隔）
+       ADMIN_USERNAMES: ${ADMIN_USERNAMES:-admin}
+       # 应用配置
+       NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}
+       # AI 服务配置
+       CUSTOM_API_KEY: ${CUSTOM_API_KEY:-}
+       CUSTOM_API_URL: ${CUSTOM_API_URL:-}
+       CUSTOM_MODEL_NAME: ${CUSTOM_MODEL_NAME:-}
+     ports:
+       - '3000:3000'
 volumes:
   db-config:
