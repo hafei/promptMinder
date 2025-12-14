@@ -43,13 +43,13 @@ function AdminLayoutContent({ children }) {
                   用户管理
                 </div>
               </Link>
-              
+
               {/* 管理员信息和登出 */}
               <div className="flex items-center gap-2 ml-4 pl-4 border-l">
                 <span className="text-sm text-muted-foreground">
                   {user?.email || user?.display_name || "管理员"}
                 </span>
-                <Button
+                {/* <Button
                   variant="ghost"
                   size="sm"
                   onClick={signOut}
@@ -57,7 +57,7 @@ function AdminLayoutContent({ children }) {
                 >
                   <LogOut className="w-4 h-4 mr-1" />
                   退出
-                </Button>
+                </Button> */}
               </div>
             </nav>
           </div>
