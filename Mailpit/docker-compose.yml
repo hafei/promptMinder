@@ -1,0 +1,28 @@
+services:
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mailpit_dev
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # SMTP 监听端口
+      - "8025:8025" # Web UI 访问端口
+    environment:
+      # 数据库持久化路径，确保重启后邮件不丢失
+      MP_DATABASE: /data/mailpit.db
+      # 最大存储邮件数，防止磁盘占满
+      MP_MAX_MESSAGES: 5000
+      # 禁用 TLS，使用纯文本连接
+      MP_SMTP_TLS_CERT: ""
+      MP_SMTP_TLS_KEY: ""
+      # 启用混沌测试功能，允许通过 API 动态注入故障
+      MP_ENABLE_CHAOS: "true"
+      # 设置时区，方便日志排查
+      TZ: Asia/Shanghai
+    volumes:
+      - ./mailpit_data:/data
+    networks:
+      - mail_net
+
+networks:
+  mail_net:
+    driver: bridge
