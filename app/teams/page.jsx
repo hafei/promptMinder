@@ -30,6 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import TeamApiKeys from "@/components/team-api-keys";
 import {
   Loader2,
   Plus,
@@ -40,6 +41,7 @@ import {
   ArrowRightLeft,
   Trash2,
   Mail,
+  Key,
 } from "lucide-react";
 
 export default function TeamsPage() {
@@ -982,6 +984,13 @@ export default function TeamsPage() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            )}
+
+            {/* API Keys管理 - 只有管理员才能看到 */}
+            {isManager && (
+              <div className="mt-8 pt-8 border-t border-border/50">
+                <TeamApiKeys teamId={activeTeamId} />
               </div>
             )}
           </CardContent>
