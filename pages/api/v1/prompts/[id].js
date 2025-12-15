@@ -109,8 +109,7 @@ async function handler(req, res) {
       .from('prompts')
       .select(`
         *,
-        projects(name),
-        team_members(email, role)
+        projects(name)
       `)
       .eq('id', promptId)
       .eq('team_id', teamId)

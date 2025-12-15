@@ -19,12 +19,12 @@ const apiSpec = createSwaggerSpec({
       }
     },
     servers: [
+      // {
+      //   url: 'https://promptminder.com/api/v1',
+      //   description: 'Production server'
+      // },
       {
-        url: 'https://promptminder.com/api/v1',
-        description: 'Production server'
-      },
-      {
-        url: 'http://localhost:3000/api/v1',
+        url: 'http://localhost:3010/api/v1',
         description: 'Development server'
       }
     ],
