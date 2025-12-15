@@ -9,8 +9,7 @@ export default function NewTag() {
   const router = useRouter();
   const { t } = useLanguage();
   const [formData, setFormData] = useState({
-    name: '',
-    isPublic: false
+    name: ''
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);

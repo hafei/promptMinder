@@ -5,17 +5,12 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Modal, ModalContent, ModalHeader, ModalTitle, ModalFooter } from '@/components/ui/modal';
 import { Trash2, Pencil, ArrowLeft } from 'lucide-react';
-import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useTeam } from '@/contexts/team-context';
 import { apiClient } from '@/lib/api-client';
 
 const TagsSkeleton = () => {
-  const { t } = useLanguage();
-  if (!t) return null;
-  const tp = t.tagsPage;
-  if (!tp) return null;
-
   return (
     <div className="max-w-5xl mx-auto p-4 animate-pulse">
       <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
@@ -32,14 +27,6 @@ const TagsSkeleton = () => {
             ))}
           </div>
         </div>
-        <div>
-          <div className="h-6 bg-gray-200 rounded w-1/5 mb-4"></div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-10 bg-gray-200 rounded"></div>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -47,7 +34,8 @@ const TagsSkeleton = () => {
 
 export default function TagsPage() {
   const router = useRouter();
-  const { language, t } = useLanguage();
+  const { t } = useLanguage();
+  const { activeTeamId } = useTeam();
   const [tags, setTags] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -58,26 +46,18 @@ export default function TagsPage() {
 
   const fetchTags = useCallback(async () => {
     try {
-      const data = await apiClient.getTags();
+      const options = activeTeamId ? { teamId: activeTeamId } : {};
+      const data = await apiClient.getTags(options);
 
-      // Normalize API response to a flat array for rendering safety
-      const teamTags = Array.isArray(data?.team) ? data.team : [];
-      const personalTags = Array.isArray(data?.personal) ? data.personal : [];
-      const globalTags = Array.isArray(data?.global) ? data.global : [];
-      const fallback = Array.isArray(data) ? data : [];
-
-      // Prefer structured response if present; otherwise fallback to legacy array
-      const normalized = (teamTags.length || personalTags.length || globalTags.length)
-        ? [...teamTags, ...personalTags, ...globalTags]
-        : fallback;
-
-      setTags(normalized);
+      // Handle new team-based tag structure
+      const tags = Array.isArray(data) ? data : [];
+      setTags(tags);
     } catch (err) {
       setError(err.message || t?.tagsPage?.fetchError || 'Failed to fetch tags');
     } finally {
       setLoading(false);
     }
-  }, [t]); // Add t to dependencies
+  }, [t, activeTeamId]); // Add activeTeamId to dependencies
 
   useEffect(() => {
     fetchTags();
@@ -94,7 +74,8 @@ export default function TagsPage() {
 
   const confirmDelete = async () => {
     try {
-      await apiClient.deleteTag(selectedTagId);
+      const options = activeTeamId ? { teamId: activeTeamId } : {};
+      await apiClient.deleteTag(selectedTagId, options);
       setDeleteModalOpen(false);
       fetchTags();
     } catch (err) {
@@ -110,7 +91,8 @@ export default function TagsPage() {
 
   const confirmEdit = async () => {
     try {
-      await apiClient.updateTag(editingTag.id, { name: editingTag.name });
+      const options = activeTeamId ? { teamId: activeTeamId } : {};
+      await apiClient.updateTag(editingTag.id, { name: editingTag.name }, options);
       setEditModalOpen(false);
       fetchTags();
     } catch (err) {
@@ -154,40 +136,23 @@ export default function TagsPage() {
         </div>
       ) : (
         <div className="space-y-8">
-          {/* 公共标签部分 */}
+          {/* Current Context Tags */}
           <div>
-            <h2 className="text-xl font-semibold mb-4">{tp.publicTagsTitle}</h2>
+            <h2 className="text-xl font-semibold mb-4">{tp.currentTagsTitle}</h2>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {tags.filter(tag => !tag.user_id).map((tag) => (
+              {tags.map((tag) => (
                 <div
                   key={tag.id}
                   className="group relative bg-gray-50 rounded-lg px-4 py-2 border border-gray-200 hover:border-indigo-300 transition-colors"
                 >
                   <div className="inline-flex items-center">
                     <span className="text-sm font-medium text-gray-700">{tag.name}</span>
-                  </div>
-                </div>
-              ))}
-              {tags.filter(tag => !tag.user_id).length === 0 && (
-                <div className="col-span-full text-center text-gray-500 py-4">
-                  {tp.noPublicTags}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* 私有标签部分 */}
-          <div>
-            <h2 className="text-xl font-semibold mb-4">{tp.privateTagsTitle}</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {tags.filter(tag => tag.user_id).map((tag) => (
-                <div
-                  key={tag.id}
-                  className="group relative bg-gray-50 rounded-lg px-4 py-2 border border-gray-200 hover:border-indigo-300 transition-colors"
-                >
-                  <div className="inline-flex items-center">
-                    <span className="text-sm font-medium text-gray-700">{tag.name}</span>
-                    <span className="ml-2 px-2 py-0.5 text-[10px] font-medium bg-indigo-50 text-indigo-600 rounded-full">{tp.privateTagBadge}</span>
+                    {tag.team_id && (
+                      <span className="ml-2 px-2 py-0.5 text-[10px] font-medium bg-green-50 text-green-600 rounded-full">{tp.teamTagBadge}</span>
+                    )}
+                    {!tag.team_id && (
+                      <span className="ml-2 px-2 py-0.5 text-[10px] font-medium bg-indigo-50 text-indigo-600 rounded-full">{tp.personalTagBadge}</span>
+                    )}
                   </div>
                   <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
                     <button
@@ -205,9 +170,9 @@ export default function TagsPage() {
                   </div>
                 </div>
               ))}
-              {tags.filter(tag => tag.user_id).length === 0 && (
+              {tags.length === 0 && (
                 <div className="col-span-full text-center text-gray-500 py-4">
-                  {tp.noPrivateTags}
+                  {tp.noTagsMessage}
                 </div>
               )}
             </div>
