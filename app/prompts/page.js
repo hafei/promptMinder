@@ -64,7 +64,7 @@ export default function PromptsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tagOptions, setTagOptions] = useState([]);
 
-  
+
   // 分页相关状态
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -465,7 +465,7 @@ export default function PromptsPage() {
               </div>
             </div>
 
-  
+
             <div className="flex flex-col md:flex-row md:flex-wrap md:items-center gap-3 md:gap-4">
               <div className="relative w-full md:w-[320px]">
                 <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
@@ -572,7 +572,7 @@ export default function PromptsPage() {
                   <div className="flex justify-between items-center">
                     <div>
                       <div className="font-medium text-primary">
-                        v{version.version}
+                        {version.version}
                       </div>
                       <div className="text-sm text-muted-foreground">
                         {new Date(version.created_at).toLocaleString()}

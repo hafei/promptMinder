@@ -12,6 +12,11 @@ async function getPromptId(paramsPromise) {
   return id
 }
 
+// 判断是 UUID 还是 8位 prompt_id
+function isUUID(str) {
+  return str.length === 36 && str.includes('-')
+}
+
 function isCreator(prompt, userId) {
   return prompt.created_by === userId || prompt.user_id === userId
 }
@@ -34,18 +39,29 @@ export async function GET(request, { params }) {
       membership = await teamService.requireMembership(teamId, userId)
     }
 
-    let query = supabase.from('prompts').select('*').eq('id', id)
+    // 支持 UUID 或 8位 prompt_id 查询
+    let query = supabase.from('prompts').select('*')
+    if (isUUID(id)) {
+      query = query.eq('id', id)
+    } else {
+      // 8位 prompt_id 可能有多个版本，按创建时间降序
+      query = query.eq('prompt_id', id).order('created_at', { ascending: false })
+    }
+
     if (teamId) {
       query = query.eq('team_id', teamId)
     } else {
       query = query.or(`created_by.eq.${userId},user_id.eq.${userId}`)
     }
 
-    const { data: prompt, error } = await query.maybeSingle()
+    const { data: prompts, error } = await query
 
     if (error) {
       throw error
     }
+
+    // 如果用 prompt_id 查询，返回最新版本
+    const prompt = Array.isArray(prompts) ? prompts[0] : prompts
 
     if (!prompt) {
       return NextResponse.json({ error: 'Prompt not found' }, { status: 404 })

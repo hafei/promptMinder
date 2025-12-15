@@ -5,7 +5,7 @@ import { createSupabaseServerClient as createClient } from '@/lib/supabaseServer
  * @swagger
  * /prompts:
  *   get:
- *     summary: 获取认证团队的所有prompts
+ *     summary: 获取认证团队的所有prompts（每个prompt_id只返回最新版本）
  *     tags:
  *       - Prompts
  *     security:
@@ -17,7 +17,7 @@ import { createSupabaseServerClient as createClient } from '@/lib/supabaseServer
  *           type: integer
  *           minimum: 1
  *           default: 1
- *         description: 页码（用于分页）
+ *         description: 页码
  *       - in: query
  *         name: limit
  *         schema:
@@ -25,12 +25,12 @@ import { createSupabaseServerClient as createClient } from '@/lib/supabaseServer
  *           minimum: 1
  *           maximum: 100
  *           default: 20
- *         description: 每页的prompt数量
+ *         description: 每页数量
  *       - in: query
  *         name: search
  *         schema:
  *           type: string
- *         description: 搜索关键词，将在标题和描述中搜索
+ *         description: 搜索关键词
  *       - in: query
  *         name: tags
  *         schema:
@@ -64,26 +64,6 @@ import { createSupabaseServerClient as createClient } from '@/lib/supabaseServer
  *     responses:
  *       200:
  *         description: 成功获取prompts列表
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Prompt'
- *                 meta:
- *                   type: object
- *                   properties:
- *                     pagination:
- *                       $ref: '#/components/schemas/Pagination'
- *                 timestamp:
- *                   type: string
- *                   format: date-time
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       403:
@@ -92,7 +72,6 @@ import { createSupabaseServerClient as createClient } from '@/lib/supabaseServer
  *         $ref: '#/components/responses/InternalServerError'
  */
 async function handler(req, res) {
-  // 只允许GET请求
   if (req.method !== 'GET') {
     return res.status(405).json({
       success: false,
@@ -104,7 +83,6 @@ async function handler(req, res) {
   const { teamId } = req.auth;
   const supabase = createClient();
 
-  // 解析查询参数
   const {
     page = 1,
     limit = 20,
@@ -116,7 +94,6 @@ async function handler(req, res) {
     is_public
   } = req.query;
 
-  // 构建基础查询
   let query = supabase
     .from('prompts')
     .select(`
@@ -127,14 +104,12 @@ async function handler(req, res) {
 
   // 应用过滤器
   if (search) {
-    // 在标题、内容和描述中搜索
     query = query.or(
       `title.ilike.%${search}%,content.ilike.%${search}%,description.ilike.%${search}%`
     );
   }
 
   if (tags) {
-    // 处理标签过滤
     const tagList = tags.split(',').map(tag => tag.trim());
     query = query.contains('tags', tagList);
   }
@@ -148,16 +123,15 @@ async function handler(req, res) {
     query = query.eq('is_public', isPublicBool);
   }
 
-  // 应用排序
+  // 排序
   const validSortFields = ['created_at', 'updated_at', 'title', 'version'];
   const sortField = validSortFields.includes(sort) ? sort : 'created_at';
   const ascending = order === 'asc';
-
   query = query.order(sortField, { ascending });
 
-  // 分页处理
+  // 分页
   const pageNum = parseInt(page);
-  const limitNum = Math.min(parseInt(limit), 100); // 最大限制为100
+  const limitNum = Math.min(parseInt(limit), 100);
 
   if (pageNum > 1) {
     const from = (pageNum - 1) * limitNum;
@@ -168,7 +142,6 @@ async function handler(req, res) {
   }
 
   try {
-    // 执行查询
     const { data: prompts, error, count } = await query;
 
     if (error) {
@@ -181,23 +154,34 @@ async function handler(req, res) {
       });
     }
 
+    // 按 prompt_id 分组，只保留最新版本（按 created_at 降序）
+    const latestByPromptId = {};
+    for (const prompt of (prompts || [])) {
+      const pid = prompt.prompt_id;
+      if (!latestByPromptId[pid] || new Date(prompt.created_at) > new Date(latestByPromptId[pid].created_at)) {
+        latestByPromptId[pid] = prompt;
+      }
+    }
+
     // 处理响应数据
-    const processedPrompts = (prompts || []).map(prompt => {
-      // 处理标签字段（如果存储为JSON字符串）
+    const processedPrompts = Object.values(latestByPromptId).map(prompt => {
+      let parsedTags = [];
       if (typeof prompt.tags === 'string') {
         try {
-          prompt.tags = JSON.parse(prompt.tags);
+          parsedTags = JSON.parse(prompt.tags);
         } catch (e) {
-          prompt.tags = [];
+          parsedTags = prompt.tags.split(',').map(t => t.trim()).filter(Boolean);
         }
       }
-      return prompt;
+
+      return {
+        ...prompt,
+        tags: parsedTags
+      };
     });
 
-    // 构建分页信息
     const pagination = createPaginationInfo(pageNum, limitNum, count || 0);
 
-    // 返回成功响应
     return res.status(200).json(
       successResponse(processedPrompts, pagination)
     );
@@ -212,5 +196,4 @@ async function handler(req, res) {
   }
 }
 
-// 使用API认证中间件包装处理器
 export default withAPIAuth(handler, PERMISSIONS.READ_PROMPTS);

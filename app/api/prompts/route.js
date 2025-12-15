@@ -100,6 +100,21 @@ export async function GET(request) {
 
     let prompts = promptsResult.data || []
 
+    // 按 prompt_id 分组，只保留最新版本
+    const latestByPromptId = {}
+    for (const prompt of prompts) {
+      const pid = prompt.prompt_id
+      if (pid) {
+        if (!latestByPromptId[pid] || new Date(prompt.created_at) > new Date(latestByPromptId[pid].created_at)) {
+          latestByPromptId[pid] = prompt
+        }
+      } else {
+        // 没有 prompt_id 的旧数据，按原样保留
+        latestByPromptId[prompt.id] = prompt
+      }
+    }
+    prompts = Object.values(latestByPromptId)
+
     // Enrich prompts with creator info if possible
     if (prompts.length > 0) {
       const userIds = Array.from(new Set(prompts.map(p => p.created_by).filter(Boolean)))
@@ -165,18 +180,18 @@ export async function POST(request) {
     // Check for duplicate title within the team context
     const titleCheckQuery = targetTeamId
       ? supabase
-          .from('prompts')
-          .select('id')
-          .eq('team_id', targetTeamId)
-          .eq('title', data.title)
-          .single()
+        .from('prompts')
+        .select('id')
+        .eq('team_id', targetTeamId)
+        .eq('title', data.title)
+        .single()
       : supabase
-          .from('prompts')
-          .select('id')
-          .is('team_id', null)
-          .eq('created_by', userId)
-          .eq('title', data.title)
-          .single()
+        .from('prompts')
+        .select('id')
+        .is('team_id', null)
+        .eq('created_by', userId)
+        .eq('title', data.title)
+        .single()
 
     const { data: existingPrompt, error: checkError } = await titleCheckQuery
 

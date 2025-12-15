@@ -1,9 +1,9 @@
-import { withAPIAuth, successResponse, APIErrors, PERMISSIONS } from '@/lib/middleware/api-auth';
+import { withAPIAuth, successResponse, PERMISSIONS } from '@/lib/middleware/api-auth';
 import { createSupabaseServerClient as createClient } from '@/lib/supabaseServer';
 
 /**
  * @swagger
- * /prompts/{id}:
+ * /prompts/{prompt_id}:
  *   get:
  *     summary: 获取单个prompt的详细信息
  *     tags:
@@ -12,75 +12,33 @@ import { createSupabaseServerClient as createClient } from '@/lib/supabaseServer
  *       - BearerAuth: []
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: prompt_id
  *         required: true
  *         schema:
  *           type: string
- *           format: uuid
- *         description: Prompt的UUID
+ *         description: Prompt的8位ID（如 a1b2c3d4）
  *       - in: query
  *         name: include_versions
  *         schema:
  *           type: boolean
  *           default: false
- *         description: 是否包含版本历史
+ *         description: 是否包含所有版本历史
+ *       - in: query
+ *         name: version
+ *         schema:
+ *           type: string
+ *         description: 指定版本（如 "1.0.0"），不指定则返回最新版本
  *     responses:
  *       200:
  *         description: 成功获取prompt详情
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   allOf:
- *                     - $ref: '#/components/schemas/Prompt'
- *                     - type: object
- *                       properties:
- *                         project:
- *                           type: object
- *                           properties:
- *                             id:
- *                               type: string
- *                               format: uuid
- *                             name:
- *                               type: string
- *                         creator:
- *                           type: object
- *                           properties:
- *                             email:
- *                               type: string
- *                             role:
- *                               type: string
- *                         versions:
- *                           type: array
- *                           items:
- *                             type: object
- *                             properties:
- *                               version:
- *                                 type: integer
- *                               created_at:
- *                                 type: string
- *                                 format: date-time
- *                 timestamp:
- *                   type: string
- *                   format: date-time
  *       404:
  *         description: Prompt不存在
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  */
 async function handler(req, res) {
-  // 只允许GET请求
   if (req.method !== 'GET') {
     return res.status(405).json({
       success: false,
@@ -90,71 +48,96 @@ async function handler(req, res) {
   }
 
   const { teamId } = req.auth;
-  const { id: promptId } = req.query;
-  const { include_versions = false } = req.query;
+  const { id: promptIdentifier } = req.query;
+  const { include_versions = false, version } = req.query;
   const supabase = createClient();
 
-  // 验证promptId格式
-  if (!promptId || typeof promptId !== 'string') {
+  if (!promptIdentifier || typeof promptIdentifier !== 'string') {
     return res.status(400).json({
       success: false,
-      error: 'Invalid prompt ID',
+      error: 'Invalid prompt identifier',
       error_code: 'INVALID_PROMPT_ID'
     });
   }
 
   try {
-    // 获取prompt详情
-    const { data: prompt, error } = await supabase
+    // 判断是 UUID 还是 8位 prompt_id
+    const isUUID = promptIdentifier.length === 36 && promptIdentifier.includes('-');
+
+    let query = supabase
       .from('prompts')
-      .select(`
-        *,
-        projects(name)
-      `)
-      .eq('id', promptId)
-      .eq('team_id', teamId)
-      .single();
+      .select(`*, projects(name)`)
+      .eq('team_id', teamId);
+
+    if (isUUID) {
+      // 通过 UUID 查询单条记录
+      query = query.eq('id', promptIdentifier);
+    } else {
+      // 通过 8位 prompt_id 查询所有版本
+      query = query.eq('prompt_id', promptIdentifier);
+    }
+
+    const { data: prompts, error } = await query.order('created_at', { ascending: false });
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        // 记录不存在
-        return res.status(404).json({
-          success: false,
-          error: 'Prompt not found',
-          error_code: 'PROMPT_NOT_FOUND'
-        });
-      }
       throw error;
     }
 
-    // 处理标签字段
-    if (typeof prompt.tags === 'string') {
-      try {
-        prompt.tags = JSON.parse(prompt.tags);
-      } catch (e) {
-        prompt.tags = [];
+    if (!prompts || prompts.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Prompt not found',
+        error_code: 'PROMPT_NOT_FOUND'
+      });
+    }
+
+    // 按 created_at 排序（降序），最新的在前
+    const versions = prompts.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    const latestVersion = versions[0];
+
+    // 如果指定了特定版本
+    let selectedPrompt = latestVersion;
+    if (version) {
+      selectedPrompt = versions.find(v => v.version === version);
+      if (!selectedPrompt) {
+        return res.status(404).json({
+          success: false,
+          error: `Version "${version}" not found`,
+          error_code: 'VERSION_NOT_FOUND'
+        });
       }
     }
+
+    // 处理标签
+    let parsedTags = [];
+    if (typeof selectedPrompt.tags === 'string') {
+      try {
+        parsedTags = JSON.parse(selectedPrompt.tags);
+      } catch (e) {
+        parsedTags = selectedPrompt.tags.split(',').map(t => t.trim()).filter(Boolean);
+      }
+    }
+
+    // 构建响应
+    const responseData = {
+      ...selectedPrompt,
+      tags: parsedTags,
+      version_count: versions.length
+    };
 
     // 如果需要包含版本历史
     if (include_versions === 'true' || include_versions === true) {
-      const { data: versions, error: versionError } = await supabase
-        .from('prompts')
-        .select('id, version, title, content, created_at, updated_at')
-        .eq('team_id', teamId)
-        // 假设有字段可以关联到原始prompt
-        .eq('original_prompt_id', promptId) // 需要根据实际表结构调整
-        .order('version', { ascending: false });
-
-      if (!versionError && versions) {
-        prompt.versions = versions;
-      } else {
-        prompt.versions = [];
-      }
+      responseData.versions = versions.map(v => ({
+        id: v.id,
+        version: v.version,
+        title: v.title,
+        content: v.content,
+        created_by: v.created_by,
+        created_at: v.created_at
+      }));
     }
 
-    // 返回成功响应
-    return res.status(200).json(successResponse(prompt));
+    return res.status(200).json(successResponse(responseData));
 
   } catch (error) {
     console.error('Error fetching prompt:', error);
@@ -167,5 +150,4 @@ async function handler(req, res) {
   }
 }
 
-// 使用API认证中间件包装处理器
 export default withAPIAuth(handler, PERMISSIONS.READ_PROMPTS);

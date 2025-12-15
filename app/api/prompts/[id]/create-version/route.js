@@ -50,7 +50,7 @@ export async function POST(request, { params }) {
       throw promptError
     }
 
-      if (!originalPrompt) {
+    if (!originalPrompt) {
       console.log('Original prompt not found')
       return NextResponse.json({ error: 'Prompt not found' }, { status: 404 })
     }
@@ -85,8 +85,10 @@ export async function POST(request, { params }) {
     const timestamp = new Date().toISOString()
 
     // Create new version based on the original prompt
+    // 新版本复用原有的 prompt_id，确保版本关联
     const newVersionPayload = {
       id: generateUUID(),
+      prompt_id: originalPrompt.prompt_id, // 复用相同的 prompt_id
       team_id: originalPrompt.team_id, // Keep the same team_id
       project_id: originalPrompt.project_id,
       title: versionData.title || originalPrompt.title,

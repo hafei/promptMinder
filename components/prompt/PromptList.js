@@ -59,7 +59,7 @@ function PromptList({ prompts, onDelete, onShare }) {
           // 使用最新版本作为显示
           const latestPrompt = versions[0];
           return (
-            <Card 
+            <Card
               key={title}
               className="group relative rounded-lg border p-6 hover:shadow-md transition-all bg-card cursor-pointer"
               onClick={(e) => {
@@ -74,7 +74,7 @@ function PromptList({ prompts, onDelete, onShare }) {
               <div className="flex gap-4">
                 {latestPrompt.cover_img && (
                   <div className="h-[100px] w-[100px] rounded-lg flex-shrink-0 overflow-hidden">
-                    <Image 
+                    <Image
                       src={latestPrompt.cover_img}
                       alt={title}
                       className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
@@ -102,7 +102,7 @@ function PromptList({ prompts, onDelete, onShare }) {
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                         </svg>
-                        最新 v{latestPrompt.version}
+                        最新 {latestPrompt.version}
                       </div>
                     </div>
                   </div>
@@ -111,13 +111,13 @@ function PromptList({ prompts, onDelete, onShare }) {
                   </p>
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex flex-wrap gap-2">
-                      {(latestPrompt.tags 
-                        ? (Array.isArray(latestPrompt.tags) 
-                            ? latestPrompt.tags 
-                            : latestPrompt.tags.split(',').filter(tag => tag.trim()))
+                      {(latestPrompt.tags
+                        ? (Array.isArray(latestPrompt.tags)
+                          ? latestPrompt.tags
+                          : latestPrompt.tags.split(',').filter(tag => tag.trim()))
                         : []
                       ).map((tag) => (
-                        <span 
+                        <span
                           key={tag}
                           className="bg-secondary/80 text-secondary-foreground text-xs px-2.5 py-0.5 rounded-full hover:bg-secondary transition-colors"
                         >
@@ -185,11 +185,11 @@ function PromptList({ prompts, onDelete, onShare }) {
                 key={version.id}
                 href={`/prompts/${version.id}`}
                 className="block"
-               >
+              >
                 <Card className="p-4 hover:bg-accent cursor-pointer">
                   <div className="flex justify-between items-center">
                     <div>
-                      <div className="font-medium">v{version.version}</div>
+                      <div className="font-medium">{version.version}</div>
                       <div className="text-sm text-muted-foreground">
                         {new Date(version.created_at).toLocaleString()}
                       </div>
@@ -212,13 +212,13 @@ const arePropsEqual = (prevProps, nextProps) => {
   if (prevProps.prompts?.length !== nextProps.prompts?.length) {
     return false;
   }
-  
+
   // Deep compare prompts array for relevant properties
   if (prevProps.prompts && nextProps.prompts) {
     for (let i = 0; i < prevProps.prompts.length; i++) {
       const prevPrompt = prevProps.prompts[i];
       const nextPrompt = nextProps.prompts[i];
-      
+
       if (
         prevPrompt.id !== nextPrompt.id ||
         prevPrompt.title !== nextPrompt.title ||
@@ -231,7 +231,7 @@ const arePropsEqual = (prevProps, nextProps) => {
       }
     }
   }
-  
+
   // Compare function references (they should be stable with useCallback)
   return (
     prevProps.onDelete === nextProps.onDelete &&
