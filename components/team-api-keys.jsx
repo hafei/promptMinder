@@ -47,7 +47,28 @@ export default function TeamApiKeys({ teamId }) {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [selectedPermissions, setSelectedPermissions] = useState(['read:prompts']);
+  const [expiresAt, setExpiresAt] = useState('no-expiry');
   const { toast } = useToast();
+
+  // 定义过期时间选项 - 使用静态值，在提交时计算实际日期
+  const expiryOptions = [
+    { value: 'no-expiry', label: '永不过期' },
+    { value: '30d', label: '30天后' },
+    { value: '90d', label: '90天后' },
+    { value: '1y', label: '1年后' }
+  ];
+
+  // 根据选项计算实际过期日期
+  const calculateExpiryDate = (option) => {
+    if (option === 'no-expiry') return null;
+    const now = Date.now();
+    switch (option) {
+      case '30d': return new Date(now + 30 * 24 * 60 * 60 * 1000).toISOString();
+      case '90d': return new Date(now + 90 * 24 * 60 * 60 * 1000).toISOString();
+      case '1y': return new Date(now + 365 * 24 * 60 * 60 * 1000).toISOString();
+      default: return null;
+    }
+  };
 
   useEffect(() => {
     fetchApiKeys();
@@ -87,7 +108,6 @@ export default function TeamApiKeys({ teamId }) {
     const formData = new FormData(e.target);
     const name = formData.get('name');
     const description = formData.get('description');
-    const expiresAt = formData.get('expiresAt');
 
     try {
       const response = await fetch(`/api/teams/${teamId}/api-keys`, {
@@ -98,7 +118,7 @@ export default function TeamApiKeys({ teamId }) {
         body: JSON.stringify({
           name,
           description,
-          expiresAt: expiresAt === 'no-expiry' ? null : expiresAt,
+          expiresAt: calculateExpiryDate(expiresAt),
           permissions: selectedPermissions.length > 0 ? selectedPermissions : ['read:prompts']
         })
       });
@@ -113,6 +133,7 @@ export default function TeamApiKeys({ teamId }) {
       setShowCreateForm(false);
       fetchApiKeys();
       setSelectedPermissions(['read:prompts']);
+      setExpiresAt('no-expiry');
 
       toast({
         title: "API Key创建成功",
@@ -298,7 +319,15 @@ export default function TeamApiKeys({ teamId }) {
                 管理团队的API访问密钥
               </CardDescription>
             </div>
-            <Dialog open={showCreateForm} onOpenChange={setShowCreateForm}>
+            <Dialog
+              open={showCreateForm}
+              onOpenChange={(open) => {
+                if (!open) {
+                  setExpiresAt('no-expiry');
+                }
+                setShowCreateForm(open);
+              }}
+            >
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="w-4 h-4 mr-2" />
@@ -325,21 +354,16 @@ export default function TeamApiKeys({ teamId }) {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="expiresAt">过期时间</Label>
-                      <Select name="expiresAt">
+                      <Select value={expiresAt} onValueChange={setExpiresAt}>
                         <SelectTrigger>
                           <SelectValue placeholder="选择过期时间" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="no-expiry">永不过期</SelectItem>
-                          <SelectItem value={new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()}>
-                            30天后
-                          </SelectItem>
-                          <SelectItem value={new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString()}>
-                            90天后
-                          </SelectItem>
-                          <SelectItem value={new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()}>
-                            1年后
-                          </SelectItem>
+                          {expiryOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -360,20 +384,20 @@ export default function TeamApiKeys({ teamId }) {
                     <Tabs defaultValue="custom" className="w-full">
                       <TabsList className="grid w-full grid-cols-4">
                         <TabsTrigger value="custom">自定义</TabsTrigger>
-                        <TabsTrigger value="read-only">只读</TabsTrigger>
+                        {/* <TabsTrigger value="read-only">只读</TabsTrigger>
                         <TabsTrigger value="developer">开发者</TabsTrigger>
-                        <TabsTrigger value="full-access">完全访问</TabsTrigger>
+                        <TabsTrigger value="full-access">完全访问</TabsTrigger> */}
                       </TabsList>
 
                       <TabsContent value="custom" className="space-y-3 mt-3">
                         <div className="grid grid-cols-2 gap-3">
                           {[
                             { id: 'read:prompts', label: '读取提示词' },
-                            { id: 'write:prompts', label: '写入提示词' },
-                            { id: 'read:analytics', label: '查看分析' },
-                            { id: 'write:analytics', label: '管理分析' },
-                            { id: 'execute:prompts', label: '执行提示词' },
-                            { id: 'admin:team', label: '团队管理' }
+                            // { id: 'write:prompts', label: '写入提示词' },
+                            // { id: 'read:analytics', label: '查看分析' },
+                            // { id: 'write:analytics', label: '管理分析' },
+                            // { id: 'execute:prompts', label: '执行提示词' },
+                            // { id: 'admin:team', label: '团队管理' }
                           ].map((permission) => (
                             <div key={permission.id} className="flex items-center space-x-2">
                               <Checkbox
@@ -427,7 +451,10 @@ export default function TeamApiKeys({ teamId }) {
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => setShowCreateForm(false)}
+                      onClick={() => {
+                        setShowCreateForm(false);
+                        setExpiresAt('no-expiry');
+                      }}
                     >
                       取消
                     </Button>
@@ -455,88 +482,79 @@ export default function TeamApiKeys({ teamId }) {
               </Button>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-2">
               {apiKeys.map((key) => (
-                <Card key={key.id} className="relative">
-                  <CardContent className="pt-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="space-y-1">
-                        <h3 className="font-semibold text-lg">{key.name}</h3>
-                        {key.description && (
-                          <p className="text-sm text-muted-foreground">{key.description}</p>
-                        )}
+                <div key={key.id} className="border rounded-lg p-3 hover:bg-muted/30 transition-colors">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm truncate">{key.name}</span>
+                          {getStatusBadge(key)}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono text-muted-foreground">
+                            {key.key_prefix}...
+                          </code>
+                          {/* <button
+                            onClick={() => copyToClipboard(key.key_prefix)}
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                            title="复制"
+                          >
+                            <Copy className="w-3 h-3" />
+                          </button> */}
+                        </div>
                       </div>
-                      {getStatusBadge(key)}
                     </div>
 
-                    <div className="space-y-3">
-                      <div className="flex items-center space-x-2">
-                        <Label className="text-sm text-muted-foreground">Key:</Label>
-                        <code className="bg-muted px-2 py-1 rounded text-sm flex-1 break-all">
-                          {key.key_prefix}...
-                        </code>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => copyToClipboard(key.key_prefix)}
-                        >
-                          <Copy className="w-4 h-4" />
-                        </Button>
-                      </div>
-
-                      <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-4 h-4" />
-                          创建于 {new Date(key.created_at).toLocaleDateString('zh-CN')}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-4 h-4" />
-                          {formatDate(key.expires_at)}
-                        </span>
-                        {key.usage_count !== undefined && (
-                          <span>使用次数: {key.usage_count}</span>
-                        )}
-                      </div>
-
-                      {key.permissions && key.permissions.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {key.permissions.map((perm) => (
-                            <Badge key={perm} variant="outline" className="text-xs">
-                              {perm}
-                            </Badge>
-                          ))}
-                        </div>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0">
+                      <span className="hidden sm:inline">{formatDate(key.expires_at)}</span>
+                      {key.usage_count !== undefined && (
+                        <span className="hidden md:inline">使用次数: {key.usage_count}</span>
                       )}
                     </div>
 
-                    <div className="flex items-center space-x-2 mt-4 pt-4 border-t">
-                      <Button
-                        size="sm"
-                        variant="outline"
+                    <div className="flex items-center gap-1 shrink-0">
+                      {/* <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7"
                         onClick={() => handleRotateKey(key.id, key.name)}
+                        title="轮换"
                       >
-                        <RotateCcw className="w-4 h-4 mr-1" />
-                        轮换
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
+                        <RotateCcw className="w-3.5 h-3.5" />
+                      </Button> */}
+                      {/* <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7"
                         onClick={() => downloadDocumentation(key.key_prefix, key.name)}
+                        title="下载文档"
                       >
-                        <Download className="w-4 h-4 mr-1" />
-                        下载文档
-                      </Button>
+                        <Download className="w-3.5 h-3.5" />
+                      </Button> */}
                       <Button
-                        size="sm"
-                        variant="destructive"
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-destructive hover:text-destructive"
                         onClick={() => handleDeleteKey(key.id, key.name)}
+                        title="删除"
                       >
-                        <Trash2 className="w-4 h-4 mr-1" />
-                        删除
+                        <Trash2 className="w-3.5 h-3.5" />
                       </Button>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+
+                  {key.permissions && key.permissions.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2 pt-2 border-t">
+                      {key.permissions.map((perm) => (
+                        <Badge key={perm} variant="outline" className="text-[10px] px-1.5 py-0">
+                          {perm}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           )}
