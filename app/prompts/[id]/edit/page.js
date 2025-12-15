@@ -22,7 +22,6 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/api-client';
 import { useTeam } from '@/contexts/team-context';
-import { generateUUID } from '@/lib/utils';
 
 const CreatableSelect = dynamic(() => import('react-select/creatable'), {
   loading: () => <Skeleton className="h-10 w-full" />,
@@ -139,14 +138,22 @@ export default function EditPrompt({ params }) {
       let result;
 
       if (isNewVersion) {
-        const newPromptPayload = {
-          ...prompt,
-          id: generateUUID(),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+        // Use the new create-version endpoint that respects team context
+        const versionPayload = {
+          title: prompt.title,
+          content: prompt.content,
+          description: prompt.description,
+          version: prompt.version,
+          tags: prompt.tags,
+          is_public: prompt.is_public,
+          cover_img: prompt.cover_img,
         };
-        delete newPromptPayload.team_id;
-        result = await apiClient.createPrompt(newPromptPayload, activeTeamId ? { teamId: activeTeamId } : {});
+
+        result = await apiClient.request(`/api/prompts/${promptId}/create-version`, {
+          method: 'POST',
+          body: versionPayload,
+          teamId: activeTeamId
+        });
         toast({ title: '成功', description: tp.createVersionSuccess });
         router.push(`/prompts/${result.id}`);
       } else {

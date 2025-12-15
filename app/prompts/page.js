@@ -63,6 +63,7 @@ export default function PromptsPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tagOptions, setTagOptions] = useState([]);
+
   
   // 分页相关状态
   const [currentPage, setCurrentPage] = useState(1);
@@ -107,6 +108,7 @@ export default function PromptsPage() {
       const params = {
         page: currentPage,
         limit: pageSize,
+        scope: activeTeamId ? 'team' : 'personal'
       };
 
       if (selectedTags.length > 0) {
@@ -150,9 +152,10 @@ export default function PromptsPage() {
 
   const confirmDelete = useCallback(async () => {
     if (!t?.promptsPage) return;
-    
+
     try {
-      await apiClient.deletePrompt(promptToDelete, activeTeamId ? { teamId: activeTeamId } : {});
+      const options = activeTeamId ? { teamId: activeTeamId } : {};
+      await apiClient.deletePrompt(promptToDelete, options);
       fetchPrompts();
       setDeleteDialogOpen(false);
       toast({
@@ -192,9 +195,10 @@ export default function PromptsPage() {
 
   const handleShare = useCallback(async (id) => {
     if (!t?.promptsPage) return;
-    
+
     try {
-      await apiClient.sharePrompt(id, activeTeamId ? { teamId: activeTeamId } : {});
+      const options = activeTeamId ? { teamId: activeTeamId } : {};
+      await apiClient.sharePrompt(id, options);
       const shareUrl = `${window.location.origin}/share/${id}`;
       await copy(shareUrl);
     } catch (error) {
@@ -207,20 +211,31 @@ export default function PromptsPage() {
     }
   }, [copy, toast, t?.promptsPage, activeTeamId]);
 
-  // Group prompts by title for easier rendering
+  // Group prompts by team_id + title combination for proper team separation
   const groupedPrompts = useMemo(() => {
     const groups = prompts.reduce((acc, prompt) => {
+      // Create a unique key combining team_id and title
+      // For personal prompts (team_id is null), use 'personal' as the team identifier
+      const teamKey = prompt.team_id || 'personal';
       const title = prompt.title || "Untitled";
-      if (!acc[title]) {
-        acc[title] = [];
+      const groupKey = `${teamKey}:${title}`;
+
+      if (!acc[groupKey]) {
+        acc[groupKey] = {
+          title,
+          teamId: prompt.team_id,
+          versions: []
+        };
       }
-      acc[title].push(prompt);
+      acc[groupKey].versions.push(prompt);
       return acc;
     }, {});
 
-    return Object.entries(groups).map(([title, versions]) => ({
-      title,
-      versions: [...versions].sort(
+    // Convert the grouped object back to an array
+    return Object.values(groups).map(group => ({
+      title: group.title,
+      teamId: group.teamId,
+      versions: [...group.versions].sort(
         (a, b) =>
           new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
       ),
@@ -258,6 +273,7 @@ export default function PromptsPage() {
 
     setIsSubmitting(true);
     try {
+      const options = activeTeamId ? { teamId: activeTeamId } : {};
       await apiClient.createPrompt(
         {
           ...newPrompt,
@@ -266,7 +282,7 @@ export default function PromptsPage() {
           updated_at: new Date().toISOString(),
           is_public: true,
         },
-        activeTeamId ? { teamId: activeTeamId } : {}
+        options
       );
 
       fetchPrompts();
@@ -426,7 +442,12 @@ export default function PromptsPage() {
         <div className="space-y-8">
           <div className="flex flex-col space-y-6">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-              <h1 className="text-3xl font-bold tracking-tight">{tp.title}</h1>
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight">{tp.title}</h1>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {activeTeamId ? "团队提示词库" : "个人提示词库"}
+                </p>
+              </div>
               <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2 px-4 py-2 bg-secondary/30 rounded-lg">
                   <span className="text-sm font-medium text-secondary-foreground">
@@ -444,6 +465,7 @@ export default function PromptsPage() {
               </div>
             </div>
 
+  
             <div className="flex flex-col md:flex-row md:flex-wrap md:items-center gap-3 md:gap-4">
               <div className="relative w-full md:w-[320px]">
                 <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
