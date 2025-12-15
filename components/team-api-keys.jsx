@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { getSupabaseClient } from '@/lib/getSupabaseClient';
 import { generateAPIKeyDocumentation } from '@/lib/api-key-generator';
 import { Button } from "@/components/ui/button";
 import {
@@ -49,26 +48,28 @@ export default function TeamApiKeys({ teamId }) {
   const [copied, setCopied] = useState(false);
   const [selectedPermissions, setSelectedPermissions] = useState(['read:prompts']);
   const { toast } = useToast();
-  const supabase = getSupabaseClient();
 
   useEffect(() => {
     fetchApiKeys();
   }, [teamId]);
 
   async function fetchApiKeys() {
-    if (!supabase) {
-      console.error('Supabase client not initialized - check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY');
-      return;
-    }
     try {
-      const { data, error } = await supabase
-        .from('api_keys')
-        .select('*')
-        .eq('team_id', teamId)
-        .order('created_at', { ascending: false });
+      const response = await fetch(`/api/teams/${teamId}/api-keys`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-      if (error) throw error;
-      setApiKeys(data || []);
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || '获取失败');
+      }
+
+      console.log('Fetched API Keys:', data.data);
+      setApiKeys(data.data || []);
     } catch (error) {
       toast({
         title: "获取API Keys失败",
