@@ -3,6 +3,7 @@ import { createSupabaseServerClient } from '@/lib/supabaseServer.js'
 import { TeamService, TEAM_STATUSES } from '@/lib/team-service.js'
 import { handleApiError } from '@/lib/handle-api-error.js'
 import { requireUserId } from '@/lib/auth.js'
+import { isEmailDomainAllowed, getDomainRestrictionMessage } from '@/lib/email-domain-validator.js'
 
 async function getTeamId(paramsPromise) {
   const { teamId } = await paramsPromise
@@ -53,6 +54,11 @@ export async function POST(request, { params }) {
     const normalizedEmail = email.trim().toLowerCase()
     if (!emailRegex.test(normalizedEmail)) {
       return NextResponse.json({ error: '请输入有效的邮箱地址' }, { status: 400 })
+    }
+
+    // Validate email domain
+    if (!isEmailDomainAllowed(normalizedEmail)) {
+      return NextResponse.json({ error: getDomainRestrictionMessage() }, { status: 400 })
     }
 
     const supabase = createSupabaseServerClient()

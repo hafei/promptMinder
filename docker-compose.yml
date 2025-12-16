@@ -153,6 +153,8 @@ services:
       NEXT_PUBLIC_APP_LOGO_WIDTH: ${NEXT_PUBLIC_APP_LOGO_WIDTH:-40}
       NEXT_PUBLIC_APP_LOGO_HEIGHT: ${NEXT_PUBLIC_APP_LOGO_HEIGHT:-40}
       NEXT_PUBLIC_APP_DESCRIPTION: ${NEXT_PUBLIC_APP_DESCRIPTION:-Make AI prompt management simpler and more efficient...}
+      # 邮箱域名限制 (多个域名用逗号分隔)
+      NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS: ${NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS:-dev.zo}
     ports:
       - '3000:3000'
     volumes:

@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { useToast } from '@/hooks/use-toast'
 import { Loader2, Mail, CheckCircle, Wand2 } from 'lucide-react'
+import { isEmailDomainAllowed, getDomainRestrictionMessage } from '@/lib/email-domain-validator'
 
 export function LoginForm({ redirectUrl = '/prompts', onSuccess }) {
   const [email, setEmail] = useState('')
@@ -29,6 +30,15 @@ export function LoginForm({ redirectUrl = '/prompts', onSuccess }) {
       toast({
         variant: 'destructive',
         description: '请输入邮箱和密码'
+      })
+      return
+    }
+
+    // Validate email domain
+    if (!isEmailDomainAllowed(email)) {
+      toast({
+        variant: 'destructive',
+        description: getDomainRestrictionMessage()
       })
       return
     }
@@ -71,6 +81,15 @@ export function LoginForm({ redirectUrl = '/prompts', onSuccess }) {
       return
     }
 
+    // Validate email domain
+    if (!isEmailDomainAllowed(email)) {
+      toast({
+        variant: 'destructive',
+        description: getDomainRestrictionMessage()
+      })
+      return
+    }
+
     setIsLoading(true)
 
     try {
@@ -106,6 +125,15 @@ export function LoginForm({ redirectUrl = '/prompts', onSuccess }) {
       toast({
         variant: 'destructive',
         description: '请输入邮箱地址'
+      })
+      return
+    }
+
+    // Validate email domain
+    if (!isEmailDomainAllowed(email)) {
+      toast({
+        variant: 'destructive',
+        description: getDomainRestrictionMessage()
       })
       return
     }
@@ -360,6 +388,15 @@ export function RegisterForm({ redirectUrl = '/prompts', onSuccess }) {
       toast({
         variant: 'destructive',
         description: '请输入有效的邮箱地址'
+      })
+      return
+    }
+
+    // Validate email domain
+    if (!isEmailDomainAllowed(email)) {
+      toast({
+        variant: 'destructive',
+        description: getDomainRestrictionMessage()
       })
       return
     }

@@ -90,6 +90,9 @@ NEXT_PUBLIC_APP_LOGO=/logo2.png
 NEXT_PUBLIC_APP_LOGO_WIDTH=40
 NEXT_PUBLIC_APP_LOGO_HEIGHT=40
 NEXT_PUBLIC_APP_DESCRIPTION="Make AI prompt management simpler and more efficient..."
+
+# 邮箱域名限制 (多个域名用逗号分隔)
+NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS=dev.zo
 ```
 
 4. **初始化数据库**
@@ -369,3 +372,6 @@ node -e "const jwt = require('jsonwebtoken'); const secret = 'super-secret-jwt-k
 
 ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzY1NjM0MDMyLCJleHAiOjE3OTcxNzAwMzJ9.EY31L6e8y5KYrnwQ5zRVhK415wY_lb8Mu1BwVd88BV0
 SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3NjU2MzQwMzIsImV4cCI6MTc5NzE3MDAzMn0.CicU89LY8wgYgP6yAldIfveaqHZ1FQxD1hqfnaQ7YVc
+
+
+docker build  -t  promptminder:v0.1.1 .
