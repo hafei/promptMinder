@@ -311,7 +311,7 @@ export function LoginForm({ redirectUrl = '/prompts', onSuccess }) {
         )}
       </Button>
 
-      <div className="relative my-4">
+      {/* <div className="relative my-4">
         <div className="absolute inset-0 flex items-center">
           <span className="w-full border-t" />
         </div>
@@ -328,7 +328,7 @@ export function LoginForm({ redirectUrl = '/prompts', onSuccess }) {
       >
         <Wand2 className="mr-2 h-4 w-4" />
         使用 Magic Link 登录
-      </Button>
+      </Button> */}
     </form>
   )
 }
