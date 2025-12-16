@@ -16,7 +16,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { TypeAnimation } from "react-type-animation";
 import { BoltIcon, GlobeAltIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import ShinyText from "../texts/ShinyText";
-import { GitHubStars } from "../ui/github-stars";
+// import { GitHubStars } from "../ui/github-stars";
 import { ParticleButton } from "../ui/particle-button";
 
 export function HeroSection({ t }) {
@@ -25,7 +25,7 @@ export function HeroSection({ t }) {
 
   const fallback = {
     mainTitle: "Make AI Prompt Management Simpler",
-    subtitleStart: "An open-source prompt management platform built for ",
+    subtitleStart: "An prompt management platform built for ",
     animatedText: ["AI practitioners", "content creators", "developers", "researchers"],
     subtitleEnd: "",
     description:
@@ -158,28 +158,28 @@ export function HeroSection({ t }) {
               <ParticleButton
                 onClick={() => router.push(isSignedIn ? "/prompts" : "/sign-up")}
                 className="group relative inline-flex h-14 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-8 text-lg font-semibold text-white shadow-xl shadow-slate-900/20 transition-all hover:bg-slate-800 hover:shadow-2xl hover:shadow-slate-900/30"
-               >
+              >
                 {heroCopy.ctaButton}
               </ParticleButton>
               <Link
                 href="/public"
                 className="inline-flex h-14 items-center justify-center rounded-2xl border border-slate-200 bg-white px-8 text-lg font-semibold text-slate-900 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-300"
-               >
+              >
                 {heroCopy.secondaryCta}
               </Link>
             </div>
 
             {/* Stats/Social Proof */}
             <div className="flex flex-wrap items-center gap-8 pt-4">
-              <GitHubStars className="rounded-full border border-slate-200 bg-white/60 px-4 py-2 shadow-sm backdrop-blur transition-colors hover:bg-white/80" />
-              <div className="flex items-center gap-8 border-l border-slate-200 pl-8">
+              {/* <GitHubStars className="rounded-full border border-slate-200 bg-white/60 px-4 py-2 shadow-sm backdrop-blur transition-colors hover:bg-white/80" /> */}
+              {/* <div className="flex items-center gap-8 pl-8">
                 {stats.map((stat) => (
                   <div key={stat.label} className="flex flex-col">
                     <span className="text-2xl font-bold text-slate-900">{stat.value}</span>
                     <span className="text-xs font-medium uppercase tracking-wider text-slate-500">{stat.label}</span>
                   </div>
                 ))}
-              </div>
+              </div> */}
             </div>
           </MotionDiv>
 
@@ -237,31 +237,31 @@ export function HeroSection({ t }) {
                 transition={{ delay: 0.6, duration: 0.8 }}
                 className="absolute -bottom-12 -right-12 z-20 w-80 rounded-[2rem] border border-white/40 bg-white/80 p-6 shadow-2xl shadow-slate-900/10 backdrop-blur-xl"
               >
-                 <div className="flex items-center justify-between mb-4">
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">{snapshot.badge}</span>
-                    <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-[10px] font-bold text-indigo-600">{snapshot.status}</span>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <div className="rounded-xl bg-slate-900 p-4 text-white shadow-lg">
-                       <div className="flex items-center gap-2 opacity-50 mb-2">
-                          <div className="h-1.5 w-1.5 rounded-full bg-white"/>
-                          <span className="text-[10px] font-medium uppercase tracking-wider">{snapshot.promptLabel}</span>
-                       </div>
-                       <p className="font-medium leading-snug">&ldquo;{snapshot.promptText}&rdquo;</p>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">{snapshot.badge}</span>
+                  <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-[10px] font-bold text-indigo-600">{snapshot.status}</span>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="rounded-xl bg-slate-900 p-4 text-white shadow-lg">
+                    <div className="flex items-center gap-2 opacity-50 mb-2">
+                      <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                      <span className="text-[10px] font-medium uppercase tracking-wider">{snapshot.promptLabel}</span>
                     </div>
-                    
-                    <div className="flex gap-3">
-                      <div className="flex-1 rounded-xl bg-white p-3 shadow-sm border border-slate-100">
-                         <p className="text-[10px] uppercase tracking-wider text-slate-400 mb-1">{snapshot.approvalLabel}</p>
-                         <p className="font-bold text-slate-900 text-sm">{snapshot.approvalValue}</p>
-                      </div>
-                      <div className="flex-1 rounded-xl bg-white p-3 shadow-sm border border-slate-100">
-                         <p className="text-[10px] uppercase tracking-wider text-slate-400 mb-1">{snapshot.experimentsLabel}</p>
-                         <p className="font-bold text-slate-900 text-sm">{snapshot.experimentsValue}</p>
-                      </div>
+                    <p className="font-medium leading-snug">&ldquo;{snapshot.promptText}&rdquo;</p>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <div className="flex-1 rounded-xl bg-white p-3 shadow-sm border border-slate-100">
+                      <p className="text-[10px] uppercase tracking-wider text-slate-400 mb-1">{snapshot.approvalLabel}</p>
+                      <p className="font-bold text-slate-900 text-sm">{snapshot.approvalValue}</p>
+                    </div>
+                    <div className="flex-1 rounded-xl bg-white p-3 shadow-sm border border-slate-100">
+                      <p className="text-[10px] uppercase tracking-wider text-slate-400 mb-1">{snapshot.experimentsLabel}</p>
+                      <p className="font-bold text-slate-900 text-sm">{snapshot.experimentsValue}</p>
                     </div>
                   </div>
+                </div>
               </MotionDiv>
             </div>
           </MotionDiv>

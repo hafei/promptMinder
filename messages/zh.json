@@ -39,7 +39,7 @@
   },
   "hero": {
     "mainTitle": "让AI提示词管理更简单",
-    "subtitleStart": "开源的提示词管理平台，为",
+    "subtitleStart": "提示词管理平台，为",
     "animatedText": [
       "AI从业者",
       "内容创作者",
@@ -48,7 +48,7 @@
     ],
     "subtitleEnd": "打造",
     "description": "支持版本控制、团队协作、智能分类等功能",
-    "ctaButton": "免费开始使用",
+    "ctaButton": "开始使用",
     "secondaryCta": "浏览提示词合集",
     "quickHighlights": [
       {
