@@ -1,0 +1,31 @@
+docker pull --platform linux/amd64 supabase/studio:2025.12.09-sha-434634f
+docker pull --platform linux/amd64 kong:2.8.1
+docker pull --platform linux/amd64 supabase/gotrue:v2.183.0
+docker pull --platform linux/amd64 postgrest/postgrest:v14.1
+docker pull --platform linux/amd64 supabase/realtime:v2.68.0
+docker pull --platform linux/amd64 supabase/storage-api:v1.33.0
+docker pull --platform linux/amd64 darthsim/imgproxy:v3.8.0
+docker pull --platform linux/amd64 supabase/postgres-meta:v0.93.1
+docker pull --platform linux/amd64 supabase/edge-runtime:v1.69.28
+docker pull --platform linux/amd64 supabase/logflare:1.26.25
+docker pull --platform linux/amd64 supabase/postgres:15.8.1.085
+docker pull --platform linux/amd64 timberio/vector:0.28.1-alpine
+docker pull --platform linux/amd64 supabase/supavisor:2.7.4
+docker pull --platform linux/amd64 promptminder:v0.1.1
+
+
+# Save all images to tar.gz files
+docker save -o supabase-studio-2025.12.09-sha-434634f.tar.gz supabase/studio:2025.12.09-sha-434634f
+docker save -o kong-2.8.1.tar.gz kong:2.8.1
+docker save -o supabase-gotrue-v2.183.0.tar.gz supabase/gotrue:v2.183.0
+docker save -o postgrest-postgrest-v14.1.tar.gz postgrest/postgrest:v14.1
+docker save -o supabase-realtime-v2.68.0.tar.gz supabase/realtime:v2.68.0
+docker save -o supabase-storage-api-v1.33.0.tar.gz supabase/storage-api:v1.33.0
+docker save -o darthsim-imgproxy-v3.8.0.tar.gz darthsim/imgproxy:v3.8.0
+docker save -o supabase-postgres-meta-v0.93.1.tar.gz supabase/postgres-meta:v0.93.1
+docker save -o supabase-edge-runtime-v1.69.28.tar.gz supabase/edge-runtime:v1.69.28
+docker save -o supabase-logflare-1.26.25.tar.gz supabase/logflare:1.26.25
+docker save -o supabase-postgres-15.8.1.085.tar.gz supabase/postgres:15.8.1.085
+docker save -o timberio-vector-0.28.1-alpine.tar.gz timberio/vector:0.28.1-alpine
+docker save -o supabase-supavisor-2.7.4.tar.gz supabase/supavisor:2.7.4
+docker save -o promptminder-v0.1.1.tar.gz promptminder:v0.1.1
