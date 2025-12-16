@@ -19,13 +19,9 @@ const apiSpec = createSwaggerSpec({
       }
     },
     servers: [
-      // {
-      //   url: 'https://promptminder.com/api/v1',
-      //   description: 'Production server'
-      // },
       {
-        url: 'http://localhost:3010/api/v1',
-        description: 'Development server'
+        url: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3010'}/api/v1`,
+        description: process.env.NODE_ENV === 'production' ? 'Production server' : 'Development server'
       }
     ],
     tags: [
