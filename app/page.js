@@ -140,9 +140,9 @@ export default function Home() {
         <Suspense fallback={<div className="py-16 flex justify-center"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div></div>}>
           <FAQSection t={safeT.faq} />
         </Suspense>
-        <Suspense fallback={<div className="py-16 flex justify-center"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div></div>}>
-          <CTASection t={safeT.cta} />
-        </Suspense>
+        {/*<Suspense fallback={<div className="py-16 flex justify-center"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div></div>}>*/}
+        {/*  <CTASection t={safeT.cta} />*/}
+        {/*</Suspense>*/}
       </main>
       {/* 将 Context 中的 t 传递给 Footer */}
       <Suspense fallback={<div className="h-32 bg-secondary/10 animate-pulse"></div>}>

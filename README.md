@@ -82,6 +82,14 @@ ZHIPU_API_KEY=your_zhipu_api_key
 
 # 基础 URL
 NEXT_PUBLIC_BASE_URL=http://localhost:3000
+
+# 站点标识配置
+NEXT_PUBLIC_APP_NAME=PromptMinder
+NEXT_PUBLIC_APP_FAVICON=/favicon.ico
+NEXT_PUBLIC_APP_LOGO=/logo2.png
+NEXT_PUBLIC_APP_LOGO_WIDTH=40
+NEXT_PUBLIC_APP_LOGO_HEIGHT=40
+NEXT_PUBLIC_APP_DESCRIPTION="Make AI prompt management simpler and more efficient..."
 ```
 
 4. **初始化数据库**

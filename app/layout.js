@@ -1,5 +1,6 @@
 import "./globals.css";
 import Providers from "./providers";
+import { SITE_CONFIG } from '@/lib/site-config';
 
 // 使用系统字体栈，适用于离线环境
 const fontClass = "font-sans"; // 使用 Tailwind 的系统字体栈
@@ -9,8 +10,8 @@ const siteUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://prompt-minder.com";
 export const metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Prompt Minder - 专业的AI提示词管理平台",
-    template: "%s | Prompt Minder",
+    default: `${SITE_CONFIG.appName} - 专业的AI提示词管理平台`,
+    template: `%s | ${SITE_CONFIG.appName}`,
   },
   description:
     "为AI从业者打造的提示词管理工具，支持版本控制、团队协作、智能分类等功能",
@@ -37,10 +38,10 @@ export const metadata = {
   openGraph: {
     type: "website",
     url: siteUrl,
-    title: "Prompt Minder - 专业的AI提示词管理平台",
+    title: `${SITE_CONFIG.appName} - 专业的AI提示词管理平台`,
     description:
       "为AI从业者打造的提示词管理工具，支持版本控制、团队协作、智能分类等功能",
-    siteName: "Prompt Minder",
+    siteName: SITE_CONFIG.appName,
     images: [
       {
         url: "/main-page.png",
@@ -52,13 +53,13 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Prompt Minder - 专业的AI提示词管理平台",
+    title: `${SITE_CONFIG.appName} - 专业的AI提示词管理平台`,
     description:
       "为AI从业者打造的提示词管理工具，支持版本控制、团队协作、智能分类等功能",
     images: ["/main-page.png"],
   },
   icons: {
-    icon: "/favicon.ico",
+    icon: SITE_CONFIG.appFavicon,
   },
 };
 
@@ -67,14 +68,14 @@ const structuredData = {
   "@graph": [
     {
       "@type": "Organization",
-      name: "Prompt Minder",
+      name: SITE_CONFIG.appName,
       url: siteUrl,
-      logo: `${siteUrl}/logo.svg`,
+      logo: `${siteUrl}${SITE_CONFIG.appLogo}`,
       sameAs: [],
     },
     {
       "@type": "WebSite",
-      name: "Prompt Minder",
+      name: SITE_CONFIG.appName,
       url: siteUrl,
       potentialAction: {
         "@type": "SearchAction",
