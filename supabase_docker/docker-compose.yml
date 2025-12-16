@@ -510,3 +510,8 @@ services:
       # =====================================================
 volumes:
   db-config:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./volumes/db/config

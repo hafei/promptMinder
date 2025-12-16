@@ -14,18 +14,18 @@ docker pull --platform linux/amd64 supabase/supavisor:2.7.4
 docker pull --platform linux/amd64 promptminder:v0.1.1
 
 
-# Save all images to tar.gz files
-docker save -o supabase-studio-2025.12.09-sha-434634f.tar.gz supabase/studio:2025.12.09-sha-434634f
-docker save -o kong-2.8.1.tar.gz kong:2.8.1
-docker save -o supabase-gotrue-v2.183.0.tar.gz supabase/gotrue:v2.183.0
-docker save -o postgrest-postgrest-v14.1.tar.gz postgrest/postgrest:v14.1
-docker save -o supabase-realtime-v2.68.0.tar.gz supabase/realtime:v2.68.0
-docker save -o supabase-storage-api-v1.33.0.tar.gz supabase/storage-api:v1.33.0
-docker save -o darthsim-imgproxy-v3.8.0.tar.gz darthsim/imgproxy:v3.8.0
-docker save -o supabase-postgres-meta-v0.93.1.tar.gz supabase/postgres-meta:v0.93.1
-docker save -o supabase-edge-runtime-v1.69.28.tar.gz supabase/edge-runtime:v1.69.28
-docker save -o supabase-logflare-1.26.25.tar.gz supabase/logflare:1.26.25
-docker save -o supabase-postgres-15.8.1.085.tar.gz supabase/postgres:15.8.1.085
-docker save -o timberio-vector-0.28.1-alpine.tar.gz timberio/vector:0.28.1-alpine
-docker save -o supabase-supavisor-2.7.4.tar.gz supabase/supavisor:2.7.4
-docker save -o promptminder-v0.1.1.tar.gz promptminder:v0.1.1
+# 使用 gzip 压缩保存所有镜像
+docker save supabase/studio:2025.12.09-sha-434634f | gzip > supabase-studio-2025.12.09-sha-434634f.tar.gz
+docker save kong:2.8.1 | gzip > kong-2.8.1.tar.gz
+docker save supabase/gotrue:v2.183.0 | gzip > supabase-gotrue-v2.183.0.tar.gz
+docker save postgrest/postgrest:v14.1 | gzip > postgrest-postgrest-v14.1.tar.gz
+docker save supabase/realtime:v2.68.0 | gzip > supabase-realtime-v2.68.0.tar.gz
+docker save supabase/storage-api:v1.33.0 | gzip > supabase-storage-api-v1.33.0.tar.gz
+docker save darthsim/imgproxy:v3.8.0 | gzip > darthsim-imgproxy-v3.8.0.tar.gz
+docker save supabase/postgres-meta:v0.93.1 | gzip > supabase-postgres-meta-v0.93.1.tar.gz
+docker save supabase/edge-runtime:v1.69.28 | gzip > supabase-edge-runtime-v1.69.28.tar.gz
+docker save supabase/logflare:1.26.25 | gzip > supabase-logflare-1.26.25.tar.gz
+docker save supabase/postgres:15.8.1.085 | gzip > supabase-postgres-15.8.1.085.tar.gz
+docker save timberio/vector:0.28.1-alpine | gzip > timberio-vector-0.28.1-alpine.tar.gz
+docker save supabase/supavisor:2.7.4 | gzip > supabase-supavisor-2.7.4.tar.gz
+docker save promptminder:v0.1.1 | gzip > promptminder-v0.1.1.tar.gz
