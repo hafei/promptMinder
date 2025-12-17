@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { copyToClipboard } from '@/lib/clipboard';
 
 export default function PromptHeader({
   prompt,
@@ -36,13 +37,15 @@ export default function PromptHeader({
       }
 
       const shareUrl = `${window.location.origin}/share/${prompt.id}`;
-      await navigator.clipboard.writeText(shareUrl);
-      setShareSuccess(true);
-      toast({
-        title: tp.shareSuccessTitle,
-        description: tp.shareSuccessDescription,
-      });
-      setTimeout(() => setShareSuccess(false), 2000);
+      const success = await copyToClipboard(shareUrl);
+      if (success) {
+        setShareSuccess(true);
+        toast({
+          title: tp.shareSuccessTitle,
+          description: tp.shareSuccessDescription,
+        });
+        setTimeout(() => setShareSuccess(false), 2000);
+      }
     } catch (err) {
       console.error('Failed to share prompt:', err);
       toast({
@@ -79,11 +82,13 @@ export default function PromptHeader({
             </span>
             <button
               onClick={async () => {
-                await navigator.clipboard.writeText(prompt.prompt_id);
-                toast({
-                  title: 'Copied',
-                  description: 'Prompt ID copied to clipboard',
-                });
+                const success = await copyToClipboard(prompt.prompt_id);
+                if (success) {
+                  toast({
+                    title: tp.copySuccessTitle,
+                    description: tp.copySuccessDescription,
+                  });
+                }
               }}
               className="text-muted-foreground/40 hover:text-muted-foreground transition-colors p-0.5"
               title="Copy Prompt ID"

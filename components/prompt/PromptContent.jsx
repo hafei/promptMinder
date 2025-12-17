@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Check, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from '@/lib/api-client';
+import { copyToClipboard } from '@/lib/clipboard';
 
 export default function PromptContent({ 
   prompt, 
@@ -26,13 +27,15 @@ export default function PromptContent({
     try {
       // If there are variables, copy rendered content; otherwise copy original content
       const contentToCopy = hasVariables ? renderedContent : prompt.content;
-      await navigator.clipboard.writeText(contentToCopy);
-      setCopySuccess(true);
-      toast({
-        title: tp.copySuccessTitle,
-        description: hasVariables ? "已复制渲染后的提示词内容" : tp.copySuccessDescription,
-      });
-      setTimeout(() => setCopySuccess(false), 2000);
+      const success = await copyToClipboard(contentToCopy);
+      if (success) {
+        setCopySuccess(true);
+        toast({
+          title: tp.copySuccessTitle,
+          description: hasVariables ? tp.copySuccessDescriptionRendered : tp.copySuccessDescription,
+        });
+        setTimeout(() => setCopySuccess(false), 2000);
+      }
     } catch (err) {
       console.error('Failed to copy text:', err);
       toast({

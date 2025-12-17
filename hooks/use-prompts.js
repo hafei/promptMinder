@@ -3,6 +3,7 @@ import { apiClient, ApiError } from '@/lib/api-client';
 import { DEFAULTS, UI_CONFIG } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
 import { generateUUID } from '@/lib/utils';
+import { copyToClipboard } from '@/lib/clipboard';
 
 export function usePrompts(filters = {}) {
   const [prompts, setPrompts] = useState([]);
@@ -120,11 +121,13 @@ export function usePrompts(filters = {}) {
       await apiClient.sharePrompt(id);
       const shareUrl = `${window.location.origin}/share/${id}`;
 
-      await navigator.clipboard.writeText(shareUrl);
-      toast({
-        title: '分享成功',
-        description: '分享链接已复制到剪贴板',
-      });
+      const success = await copyToClipboard(shareUrl);
+      if (success) {
+        toast({
+          title: '分享成功',
+          description: '分享链接已复制到剪贴板',
+        });
+      }
     } catch (error) {
       toast({
         title: '分享失败',

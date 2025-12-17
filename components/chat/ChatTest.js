@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { copyToClipboard } from '@/lib/clipboard';
 import { Slider } from "@/components/ui/slider"
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -276,13 +277,15 @@ const presets = [
 
   const handleCopyMessage = async (content, index) => {
     try {
-      await navigator.clipboard.writeText(content);
-      setCopiedMessageId(index);
-      
-      // Reset the copied state after 2 seconds
-      setTimeout(() => {
-        setCopiedMessageId(null);
-      }, 2000);
+      const success = await copyToClipboard(content);
+      if (success) {
+        setCopiedMessageId(index);
+
+        // Reset the copied state after 2 seconds
+        setTimeout(() => {
+          setCopiedMessageId(null);
+        }, 2000);
+      }
     } catch (err) {
       console.error('Failed to copy text:', err);
     }

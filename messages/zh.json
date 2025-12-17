@@ -449,6 +449,7 @@
     "deleteConfirmDescription": "确定要删除这个提示词吗？此操作无法撤销。",
     "copySuccessTitle": "复制成功",
     "copySuccessDescription": "提示词内容已复制到剪贴板",
+    "copySuccessDescriptionRendered": "已复制渲染后的提示词内容",
     "copyErrorTitle": "复制失败",
     "copyErrorDescription": "请重试",
     "deleteError": "删除失败",
