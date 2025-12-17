@@ -57,6 +57,8 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=builder /app/node_modules ./node_modules
+# Copy pages/api source files for next-swagger-doc runtime scanning
+COPY --from=builder /app/pages/api ./pages/api
 
 # If you have a custom start script, use it. Otherwise use next start
 EXPOSE 3000
