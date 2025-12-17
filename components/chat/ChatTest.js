@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -117,6 +117,9 @@ export default function ChatTest({ prompt, variableValues = {}, hasVariables = f
     }
     return '';
   });
+  // State for available models from server
+  const [availableModels, setAvailableModels] = useState([]);
+  const [defaultModel, setDefaultModel] = useState('');
 const presets = [
   /* ---------- OpenAI ---------- */
   { label: 'OpenAI GPT-4o-mini',      value: 'openai-gpt4omini',   baseURL: 'https://api.openai.com/v1',               model: 'gpt-4o-mini' },
@@ -178,6 +181,39 @@ const presets = [
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Fetch available models from server
+  const fetchModels = useCallback(async () => {
+    try {
+      const response = await fetch('/api/chat', {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableModels(data.models || []);
+        setDefaultModel(data.defaultModel || '');
+        // Set the default model as the selected model if no model is selected
+        if (data.defaultModel && (selectedModel === 'default' || !data.models.includes(selectedModel))) {
+          setSelectedModel(data.defaultModel);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch models:', error);
+    }
+  }, [selectedModel]);
+
+  useEffect(() => {
+    fetchModels();
+  }, [fetchModels]);
+
+  // Add a refresh function that can be called manually
+  const refreshModels = () => {
+    fetchModels();
+  };
 
   if (!t) return null; // Moved loading state for translations
 
@@ -553,15 +589,31 @@ const presets = [
             
             {!useCustomKey && (
               <div className="space-y-2">
-                <label className="text-sm font-medium">{t.chatTest.selectModelLabel}</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">{t.chatTest.selectModelLabel}</label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={refreshModels}
+                    className="text-xs h-7 px-2"
+                    title="刷新模型列表"
+                  >
+                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    刷新
+                  </Button>
+                </div>
                 <Select value={selectedModel} onValueChange={setSelectedModel}>
                   <SelectTrigger className="h-8 text-sm">
-                    <SelectValue />
+                    <SelectValue placeholder={defaultModel || '默认模型'} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="default">
-                          {process.env.NEXT_PUBLIC_CUSTOM_MODEL_NAME || t.chatTest.glm4FlashModelFree || '默认模型'}
-                        </SelectItem>
+                    {availableModels.map((model) => (
+                      <SelectItem key={model} value={model}>
+                        {model} {model === defaultModel ? '(默认)' : ''}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
