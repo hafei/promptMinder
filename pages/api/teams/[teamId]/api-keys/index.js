@@ -2,8 +2,10 @@ import { createSupabaseServerClient as createClient } from '@/lib/supabaseServer
 import { generateAPIKey, getAPIKeyPrefix, PERMISSION_PRESETS } from '@/lib/api-key-generator';
 import bcrypt from 'bcryptjs';
 
-/**
- * @swagger
+/*
+ * API Keys Management - 暂时隐藏在 API 文档中
+ * 
+ * @swagger-disabled
  * /teams/{teamId}/api-keys:
  *   get:
  *     summary: 获取团队的所有API Keys

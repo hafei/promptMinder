@@ -7,16 +7,16 @@ const apiSpec = createSwaggerSpec({
     info: {
       title: 'PromptMinder API',
       version: '1.0.0',
-      description: 'API for programmatically accessing team prompts and related resources',
-      contact: {
-        name: 'PromptMinder Support',
-        url: 'https://promptminder.com/support',
-        email: 'api@promptminder.com'
-      },
-      license: {
-        name: 'MIT',
-        url: 'https://opensource.org/licenses/MIT'
-      }
+      // description: 'API for programmatically accessing team prompts and related resources',
+      // contact: {
+      //   name: 'PromptMinder Support',
+      //   url: 'https://promptminder.com/support',
+      //   email: 'api@promptminder.com'
+      // },
+      // license: {
+      //   name: 'MIT',
+      //   url: 'https://opensource.org/licenses/MIT'
+      // }
     },
     servers: [
       {
@@ -313,10 +313,10 @@ const apiSpec = createSwaggerSpec({
         BearerAuth: []
       }
     ],
-    externalDocs: {
-      description: 'PromptMinder API Documentation',
-      url: 'https://promptminder.com/api-docs'
-    }
+    // externalDocs: {
+    //   description: 'PromptMinder API Documentation',
+    //   url: 'https://promptminder.com/api-docs'
+    // }
   }
 });
 

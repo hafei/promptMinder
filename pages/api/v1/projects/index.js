@@ -1,8 +1,10 @@
 import { withAPIAuth, successResponse, PERMISSIONS } from '@/lib/middleware/api-auth';
 import { createSupabaseServerClient as createClient } from '@/lib/supabaseServer';
 
-/**
- * @swagger
+/*
+ * Projects API - 暂时隐藏在 API 文档中
+ * 
+ * @swagger-disabled
  * /projects:
  *   get:
  *     summary: 获取认证团队的所有项目
