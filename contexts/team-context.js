@@ -35,21 +35,40 @@ export function TeamProvider({ children }) {
       return
     }
 
-    if (normalizedPreferredId === null || normalizedPreferredId === PERSONAL_TEAM_ID) {
+    const activeOrPending = resolvedTeams.filter((team) => team.status === 'active')
+
+    // If explicitly set to personal space, respect that choice
+    if (normalizedPreferredId === PERSONAL_TEAM_ID) {
       setActiveTeamId(null)
       persistPreference(null)
       return
     }
-    const activeOrPending = resolvedTeams.filter((team) => team.status === 'active')
-    const hasPreferred =
-      normalizedPreferredId && activeOrPending.some((team) => team.team.id === normalizedPreferredId)
 
-    if (hasPreferred) {
-      setActiveTeamId(normalizedPreferredId)
-      persistPreference(normalizedPreferredId)
-      return
+    // If there's a preferred team that is active, use it
+    if (normalizedPreferredId) {
+      const hasPreferred = activeOrPending.some((team) => team.team.id === normalizedPreferredId)
+      if (hasPreferred) {
+        setActiveTeamId(normalizedPreferredId)
+        persistPreference(normalizedPreferredId)
+        return
+      }
     }
 
+    // Default behavior: if no preference set, select first team if available, otherwise personal space
+    if (normalizedPreferredId === null) {
+      if (activeOrPending.length > 0) {
+        const nextId = activeOrPending[0].team.id
+        setActiveTeamId(nextId)
+        persistPreference(nextId)
+        return
+      } else {
+        setActiveTeamId(null)
+        persistPreference(null)
+        return
+      }
+    }
+
+    // Fallback: select first active team
     if (activeOrPending.length > 0) {
       const nextId = activeOrPending[0].team.id
       setActiveTeamId(nextId)
@@ -57,6 +76,7 @@ export function TeamProvider({ children }) {
       return
     }
 
+    // Last resort: select first available team
     const fallbackId = resolvedTeams[0].team.id
     setActiveTeamId(fallbackId)
     persistPreference(fallbackId)
@@ -108,16 +128,9 @@ export function TeamProvider({ children }) {
   }, [applyActiveTeamFallback, isSignedIn])
 
   useEffect(() => {
+    // Don't set team ID on initialization - let fetchTeams handle the default selection
     if (!initializedRef.current) {
       initializedRef.current = true
-      if (typeof window !== 'undefined') {
-        const storedId = window.localStorage.getItem(TEAM_STORAGE_KEY)
-        if (storedId === PERSONAL_TEAM_ID) {
-          setActiveTeamId(null)
-        } else if (storedId) {
-          setActiveTeamId(storedId)
-        }
-      }
     }
   }, [])
 

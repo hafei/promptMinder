@@ -28,6 +28,7 @@ import { generateUUID } from "@/lib/utils";
 import { PromptGrid, PromptGridSkeleton } from "@/components/prompt/PromptGrid";
 import { NewPromptDialog } from "@/components/prompt/NewPromptDialog";
 import { OptimizePromptDialog } from "@/components/prompt/OptimizePromptDialog";
+import { TeamSwitcher } from '@/components/team/TeamSwitcher';
 import { Search, Tags, ChevronDown } from "lucide-react";
 
 const TagFilter = dynamic(() => import("@/components/prompt/TagFilter"), {
@@ -441,27 +442,30 @@ export default function PromptsPage() {
       <div className="container px-4 py-10 sm:py-16 mx-auto max-w-7xl">
         <div className="space-y-8">
           <div className="flex flex-col space-y-6">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-              <div>
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+              <div className="space-y-2">
                 <h1 className="text-3xl font-bold tracking-tight">{tp.title}</h1>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-sm text-muted-foreground">
                   {activeTeamId ? "团队提示词库" : "个人提示词库"}
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2 px-4 py-2 bg-secondary/30 rounded-lg">
-                  <span className="text-sm font-medium text-secondary-foreground">
-                    {tp.totalPrompts.replace(
-                      "{count}",
-                      pagination.total.toString()
-                    )}
-                  </span>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <TeamSwitcher className="w-full sm:w-auto" />
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-secondary/30 rounded-lg">
+                    <span className="text-sm font-medium text-secondary-foreground">
+                      {tp.totalPrompts.replace(
+                        "{count}",
+                        pagination.total.toString()
+                      )}
+                    </span>
+                  </div>
+                  {!isPersonal && activeTeamId && (
+                    <Button asChild variant="outline" className="whitespace-nowrap">
+                      <Link href="/teams">{tp.manageTeam}</Link>
+                    </Button>
+                  )}
                 </div>
-                {!isPersonal && activeTeamId && (
-                  <Button asChild variant="outline" className="whitespace-nowrap">
-                    <Link href="/teams">{tp.manageTeam}</Link>
-                  </Button>
-                )}
               </div>
             </div>
 
