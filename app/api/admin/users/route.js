@@ -19,13 +19,13 @@ export async function GET(request) {
 
     // 检查当前用户是否是管理员
     const isAdmin = currentUser.user_metadata?.is_admin ||
-                   currentUser.email && ADMIN_USERNAMES.some(
-                     adminUsername => {
-                       const adminEmail = adminUsername.includes('@') ? adminUsername : `${adminUsername}@`;
-                       return adminEmail === currentUser.email.toLowerCase() ||
-                              currentUser.email.toLowerCase().startsWith(adminEmail);
-                     }
-                   );
+      currentUser.email && ADMIN_USERNAMES.some(
+        adminUsername => {
+          const adminEmail = adminUsername.includes('@') ? adminUsername : `${adminUsername}@`;
+          return adminEmail === currentUser.email.toLowerCase() ||
+            currentUser.email.toLowerCase().startsWith(adminEmail);
+        }
+      );
 
     if (!isAdmin) {
       return NextResponse.json(
@@ -34,42 +34,31 @@ export async function GET(request) {
       );
     }
 
-    // 从数据库获取用户列表
+    // 使用 Supabase Auth Admin API 从 auth.users 获取用户列表
     const supabase = createSupabaseServerClient();
 
-    // 查询 users 表
-    const { data: users, error } = await supabase
-      .from('users')
-      .select('id, email, display_name, is_admin, created_at')
-      .order('created_at', { ascending: false });
+    const { data: authUsers, error } = await supabase.auth.admin.listUsers();
 
     if (error) {
-      console.error('Failed to fetch users:', error);
-      // 如果 users 表不存在，尝试从 auth.users 获取
-      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
-
-      if (authError) {
-        throw authError;
-      }
-
-      // 转换数据格式
-      const formattedUsers = authUsers.users.map(user => ({
-        id: user.id,
-        email: user.email,
-        display_name: user.user_metadata?.display_name || user.email?.split('@')[0],
-        is_admin: user.user_metadata?.is_admin || false,
-        created_at: user.created_at
-      }));
-
-      return NextResponse.json({
-        success: true,
-        users: formattedUsers
-      });
+      console.error('Failed to fetch users from auth:', error);
+      return NextResponse.json(
+        { error: '获取用户列表失败: ' + error.message },
+        { status: 500 }
+      );
     }
+
+    // 转换数据格式
+    const formattedUsers = (authUsers?.users || []).map(user => ({
+      id: user.id,
+      email: user.email,
+      display_name: user.user_metadata?.display_name || user.user_metadata?.full_name || user.email?.split('@')[0],
+      is_admin: user.user_metadata?.is_admin || false,
+      created_at: user.created_at
+    }));
 
     return NextResponse.json({
       success: true,
-      users: users || []
+      users: formattedUsers
     });
   } catch (error) {
     console.error('Failed to fetch users:', error);

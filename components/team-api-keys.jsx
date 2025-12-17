@@ -217,7 +217,27 @@ export default function TeamApiKeys({ teamId }) {
 
   async function copyToClipboard(text, isFullKey = false) {
     try {
-      await navigator.clipboard.writeText(text);
+      // 检查是否支持 Clipboard API
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        // 降级方案：使用 document.execCommand
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        textArea.style.top = "-999999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        const success = document.execCommand('copy');
+        document.body.removeChild(textArea);
+
+        if (!success) {
+          throw new Error('execCommand failed');
+        }
+      }
+
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
       toast({
@@ -225,10 +245,29 @@ export default function TeamApiKeys({ teamId }) {
         description: isFullKey ? "API Key已复制" : "Key前缀已复制"
       });
     } catch (error) {
+      console.error('复制失败:', error);
+
+      // 最后的降级方案：显示文本让用户手动复制
+      const fallbackText = isFullKey ? text : text.substring(0, 8) + '...';
+
       toast({
         title: "复制失败",
         variant: "destructive",
-        description: "请手动复制"
+        description: "请手动复制: " + fallbackText,
+        action: (
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(text).catch(() => {});
+              toast({
+                title: "已复制到剪贴板",
+                description: isFullKey ? "API Key已复制" : "Key前缀已复制"
+              });
+            }}
+            className="bg-primary text-primary-foreground px-2 py-1 rounded text-sm"
+          >
+            重试
+          </button>
+        )
       });
     }
   }

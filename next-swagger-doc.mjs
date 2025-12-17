@@ -20,7 +20,7 @@ const apiSpec = createSwaggerSpec({
     },
     servers: [
       {
-        url: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3010'}/api/v1`,
+        url: `${process.env.BASE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/v1`,
         description: process.env.NODE_ENV === 'production' ? 'Production server' : 'Development server'
       }
     ],

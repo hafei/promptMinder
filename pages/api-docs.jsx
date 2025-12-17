@@ -104,12 +104,26 @@ export default function ApiDocs({ apiSpec }) {
   );
 }
 
-export async function getStaticProps() {
-  // Import swagger spec at build time only (server-side)
+export async function getServerSideProps() {
+  // Import swagger spec at request time to get current environment variables
   const { default: apiSpec } = await import('../next-swagger-doc.mjs');
+
+  // Update the servers array with current environment
+  // Use BASE_URL (server-side, read at runtime) as primary, NEXT_PUBLIC_BASE_URL as fallback
+  const baseUrl = process.env.BASE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+  const updatedSpec = {
+    ...apiSpec,
+    servers: [
+      {
+        url: `${baseUrl}/api/v1`,
+        description: process.env.NODE_ENV === 'production' ? 'Production server' : 'Development server'
+      }
+    ]
+  };
+
   return {
     props: {
-      apiSpec
+      apiSpec: updatedSpec
     }
   };
 }
