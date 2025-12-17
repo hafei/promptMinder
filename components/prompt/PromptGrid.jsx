@@ -86,8 +86,8 @@ export function PromptGrid({
         const hasVariables = variables.length > 0;
         const variableLabel = hasVariables
           ? (variableTemplate
-              ? variableTemplate.replace("{count}", variables.length.toString())
-              : `${variables.length} 变量`)
+            ? variableTemplate.replace("{count}", variables.length.toString())
+            : `${variables.length} 变量`)
           : null;
 
         const isCreator = latestPrompt.created_by === user?.id || latestPrompt.user_id === user?.id;
@@ -115,11 +115,16 @@ export function PromptGrid({
             <div className="space-y-4 relative z-10">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-lg font-semibold line-clamp-1 mb-2 group-hover:text-primary transition-colors">
+                  <h3 className="text-lg font-semibold line-clamp-1 mb-1 group-hover:text-primary transition-colors">
                     {title}
                   </h3>
+                  {latestPrompt.prompt_id && (
+                    <span className="text-xs text-muted-foreground font-mono bg-muted/50 px-1.5 py-0.5 rounded">
+                      ID: {latestPrompt.prompt_id}
+                    </span>
+                  )}
                   {latestPrompt.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-2">
+                    <p className="text-sm text-muted-foreground line-clamp-2 mt-2">
                       {latestPrompt.description}
                     </p>
                   )}
@@ -168,8 +173,8 @@ export function PromptGrid({
                 {(Array.isArray(latestPrompt.tags)
                   ? latestPrompt.tags
                   : (latestPrompt.tags || "")
-                      .split(",")
-                      .filter((tag) => tag.trim())
+                    .split(",")
+                    .filter((tag) => tag.trim())
                 ).map((tag) => (
                   <span
                     key={tag}
@@ -187,16 +192,16 @@ export function PromptGrid({
                 {latestPrompt.creator && (
                   <div className="flex items-center gap-1.5 ml-2 pl-2 border-l border-border/50" title={`Created by ${latestPrompt.creator.fullName || latestPrompt.creator.displayName || latestPrompt.creator.email}`}>
                     <div className="h-4 w-4 rounded-full overflow-hidden bg-secondary ring-1 ring-border/50 flex-shrink-0">
-                        {latestPrompt.creator.imageUrl ? (
-                            <img src={latestPrompt.creator.imageUrl} alt="" className="h-full w-full object-cover" />
-                        ) : (
-                            <div className="h-full w-full flex items-center justify-center text-[10px] font-medium">
-                                {(latestPrompt.creator.displayName?.[0] || latestPrompt.creator.fullName?.[0] || latestPrompt.creator.email?.[0] || '?').toUpperCase()}
-                            </div>
-                        )}
+                      {latestPrompt.creator.imageUrl ? (
+                        <img src={latestPrompt.creator.imageUrl} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center text-[10px] font-medium">
+                          {(latestPrompt.creator.displayName?.[0] || latestPrompt.creator.fullName?.[0] || latestPrompt.creator.email?.[0] || '?').toUpperCase()}
+                        </div>
+                      )}
                     </div>
                     <span className="text-xs text-muted-foreground truncate max-w-[80px]">
-                        {latestPrompt.creator.displayName || latestPrompt.creator.fullName || latestPrompt.creator.username || latestPrompt.creator.email?.split('@')[0]}
+                      {latestPrompt.creator.displayName || latestPrompt.creator.fullName || latestPrompt.creator.username || latestPrompt.creator.email?.split('@')[0]}
                     </span>
                   </div>
                 )}

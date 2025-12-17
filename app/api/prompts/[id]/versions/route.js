@@ -20,8 +20,8 @@ export async function GET(request, { params }) {
       allowMissingTeam: true,
     })
 
-    // First, get the original prompt to determine its title and team
-    let promptQuery = supabase.from('prompts').select('title, team_id, created_by').eq('id', id)
+    // First, get the original prompt to determine its prompt_id and team
+    let promptQuery = supabase.from('prompts').select('prompt_id, team_id, created_by').eq('id', id)
 
     if (teamId) {
       await teamService.requireMembership(teamId, userId)
@@ -40,12 +40,12 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Prompt not found' }, { status: 404 })
     }
 
-    // Now get all versions of this prompt within the same team context
-    // Versions are determined by having the same title within the same team context
+    // Now get all versions of this prompt using prompt_id
+    // Versions are determined by having the same prompt_id
     let versionsQuery = supabase
       .from('prompts')
       .select('*')
-      .eq('title', originalPrompt.title)
+      .eq('prompt_id', originalPrompt.prompt_id)
       .order('created_at', { ascending: false })
       .limit(100) // Limit to prevent excessive results
 

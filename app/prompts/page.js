@@ -211,18 +211,17 @@ export default function PromptsPage() {
     }
   }, [copy, toast, t?.promptsPage, activeTeamId]);
 
-  // Group prompts by team_id + title combination for proper team separation
+  // Group prompts by prompt_id for proper version management
   const groupedPrompts = useMemo(() => {
     const groups = prompts.reduce((acc, prompt) => {
-      // Create a unique key combining team_id and title
-      // For personal prompts (team_id is null), use 'personal' as the team identifier
-      const teamKey = prompt.team_id || 'personal';
+      // Use prompt_id as the unique key for grouping versions
+      const groupKey = prompt.prompt_id;
       const title = prompt.title || "Untitled";
-      const groupKey = `${teamKey}:${title}`;
 
       if (!acc[groupKey]) {
         acc[groupKey] = {
           title,
+          promptId: prompt.prompt_id,
           teamId: prompt.team_id,
           versions: []
         };
@@ -234,6 +233,7 @@ export default function PromptsPage() {
     // Convert the grouped object back to an array
     return Object.values(groups).map(group => ({
       title: group.title,
+      promptId: group.promptId,
       teamId: group.teamId,
       versions: [...group.versions].sort(
         (a, b) =>

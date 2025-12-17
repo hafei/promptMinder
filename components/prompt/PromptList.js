@@ -19,12 +19,13 @@ function PromptList({ prompts, onDelete, onShare }) {
   const { copy } = useClipboard();
   const [selectedVersions, setSelectedVersions] = useState(null);
 
-  // 按标题对提示词进行分组
+  // 按 prompt_id 对提示词进行分组
   const groupedPrompts = prompts?.reduce((acc, prompt) => {
-    if (!acc[prompt.title]) {
-      acc[prompt.title] = [];
+    const key = prompt.prompt_id;  // 使用 prompt_id 唯一标识
+    if (!acc[key]) {
+      acc[key] = [];
     }
-    acc[prompt.title].push(prompt);
+    acc[key].push(prompt);
     return acc;
   }, {});
 

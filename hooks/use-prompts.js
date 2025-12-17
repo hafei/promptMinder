@@ -158,7 +158,7 @@ export function usePrompts(filters = {}) {
   // 按 prompt_id 分组提示词（同一 prompt 的不同版本）
   const groupedPrompts = useMemo(() => {
     return prompts.reduce((acc, prompt) => {
-      const key = prompt.prompt_id || prompt.title;  // 向后兼容
+      const key = prompt.prompt_id;  // 使用 prompt_id 唯一标识
       if (!acc[key]) {
         acc[key] = [];
       }
