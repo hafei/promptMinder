@@ -481,6 +481,9 @@ services:
       SUPABASE_URL: http://kong:8000
       SUPABASE_ANON_KEY: ${ANON_KEY}
       SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+      # 客户端 Supabase 配置 (用于 getSupabaseClient)
+      NEXT_PUBLIC_SUPABASE_URL: http://kong:8000
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
       # 认证配置
       AUTH_SECRET: ${AUTH_SECRET:-your-auth-secret-key-min-32-chars-here}
       # 管理员用户名（多个用逗号分隔）
