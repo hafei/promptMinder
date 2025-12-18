@@ -41,3 +41,4 @@ docker save nacos/nacos-server:v2.5.2 | gzip > nacos-nacos-server-v2.5.2.tar.gz
 
 
 docker build  -t  promptminder:v0.1.3 .
+docker save promptminder:v0.1.3 | gzip > promptminder-v0.1.3.tar.gz
