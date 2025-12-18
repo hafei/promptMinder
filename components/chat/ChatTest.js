@@ -483,25 +483,6 @@ export default function ChatTest({ prompt, variableValues = {}, hasVariables = f
               </Tooltip>
             </TooltipProvider>
 
-            {/* TODO 多模型测试 */}
-            {/* <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setShowMultiModelTest(true)}
-                    className="hover:bg-primary/10 hover:text-primary h-8 w-8"
-                  >
-                    <LayoutGrid className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  <p>{t?.promptDetailPage?.chatTest?.multiModelTest?.triggerButton || 'Multi-model Comparison'}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider> */}
-
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -519,6 +500,18 @@ export default function ChatTest({ prompt, variableValues = {}, hasVariables = f
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowMultiModelTest(true)}
+              className="h-8 gap-1.5 border-primary/20 hover:bg-primary/5 hover:text-primary transition-all shadow-sm ml-1"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+              <span className="text-xs font-medium">
+                {t?.promptDetailPage?.chatTest?.multiModelTest?.triggerButton || '多模型对比'}
+              </span>
+            </Button>
           </div>
         </div>
 
