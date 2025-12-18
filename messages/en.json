@@ -513,7 +513,21 @@
       "currentPromptPrefix": "Currently using",
       "currentPromptSuffix": "prompt for conversation",
       "defaultInputHint": "Enter message to start conversation",
-      "variablesRequiredError": "Please fill in all required variable fields before testing."
+      "variablesRequiredError": "Please fill in all required variable fields before testing.",
+      "multiModelTest": {
+        "title": "Multi-model Testing",
+        "triggerButton": "Multi-model Comparison",
+        "description": "Test the current prompt with selected models simultaneously to compare their performance.",
+        "selectModels": "Select Models",
+        "runTest": "Run Test",
+        "stopTest": "Stop Test",
+        "sharedParams": "Parameters",
+        "noModelsSelected": "Please select at least one model",
+        "resultFor": "Result for {model}",
+        "loading": "Generating...",
+        "error": "Failed to get result",
+        "inputPlaceholder": "Enter test message..."
+      }
     }
   },
   "tagsPage": {

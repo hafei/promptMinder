@@ -513,7 +513,21 @@
       "currentPromptPrefix": "当前使用",
       "currentPromptSuffix": "提示进行对话",
       "defaultInputHint": "输入消息开始对话",
-      "variablesRequiredError": "测试前请先填写所有必需的变量字段。"
+      "variablesRequiredError": "测试前请先填写所有必需的变量字段。",
+      "multiModelTest": {
+        "title": "多模型测试",
+        "triggerButton": "多模型对比测试",
+        "description": "使用选定的模型同时测试当前提示词，对比不同模型的效果。",
+        "selectModels": "选择模型",
+        "runTest": "运行测试",
+        "stopTest": "停止测试",
+        "sharedParams": "参数",
+        "noModelsSelected": "请至少选择一个模型",
+        "resultFor": "{model} 的结果",
+        "loading": "正在生成...",
+        "error": "获取结果失败",
+        "inputPlaceholder": "输入测试消息..."
+      }
     }
   },
   "chatTest": {

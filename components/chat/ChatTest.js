@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Textarea } from "@/components/ui/textarea"
-import { Settings2, Send, Check, Copy, HelpCircle, Trash2, User, Bot, Edit3 } from "lucide-react"
+import { Settings2, Send, Check, Copy, HelpCircle, Trash2, User, Bot, Edit3, LayoutGrid } from "lucide-react"
 import {
   Select,
   SelectContent,
@@ -30,6 +30,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { replaceVariables } from '@/lib/promptVariables';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/api-client';
+import MultiModelTestModal from '@/components/prompt/MultiModelTestModal';
 
 // Message loading animation component
 function MessageLoading() {
@@ -103,6 +104,7 @@ export default function ChatTest({ prompt, variableValues = {}, hasVariables = f
   const [copiedMessageId, setCopiedMessageId] = useState(null);
   const [editingMessage, setEditingMessage] = useState(null);
   const [tempEditingContent, setTempEditingContent] = useState("");
+  const [showMultiModelTest, setShowMultiModelTest] = useState(false);
   const [customModel, setCustomModel] = useState(() => {
     if (typeof window !== 'undefined') {
       const savedSettings = localStorage.getItem(STORAGE_KEY);
@@ -120,58 +122,58 @@ export default function ChatTest({ prompt, variableValues = {}, hasVariables = f
   // State for available models from server
   const [availableModels, setAvailableModels] = useState([]);
   const [defaultModel, setDefaultModel] = useState('');
-const presets = [
-  /* ---------- OpenAI ---------- */
-  { label: 'OpenAI GPT-4o-mini',      value: 'openai-gpt4omini',   baseURL: 'https://api.openai.com/v1',               model: 'gpt-4o-mini' },
-  { label: 'OpenAI GPT-4o',           value: 'openai-gpt4o',       baseURL: 'https://api.openai.com/v1',               model: 'gpt-4o' },
-  { label: 'OpenAI GPT-4-turbo',      value: 'openai-gpt4turbo',   baseURL: 'https://api.openai.com/v1',               model: 'gpt-4-turbo' },
-  { label: 'OpenAI GPT-3.5-turbo',    value: 'openai-gpt35turbo',  baseURL: 'https://api.openai.com/v1',               model: 'gpt-3.5-turbo' },
+  const presets = [
+    /* ---------- OpenAI ---------- */
+    { label: 'OpenAI GPT-4o-mini', value: 'openai-gpt4omini', baseURL: 'https://api.openai.com/v1', model: 'gpt-4o-mini' },
+    { label: 'OpenAI GPT-4o', value: 'openai-gpt4o', baseURL: 'https://api.openai.com/v1', model: 'gpt-4o' },
+    { label: 'OpenAI GPT-4-turbo', value: 'openai-gpt4turbo', baseURL: 'https://api.openai.com/v1', model: 'gpt-4-turbo' },
+    { label: 'OpenAI GPT-3.5-turbo', value: 'openai-gpt35turbo', baseURL: 'https://api.openai.com/v1', model: 'gpt-3.5-turbo' },
 
-  /* ---------- Anthropic ---------- */
-  { label: 'Anthropic Claude 3.5 Sonnet', value: 'claude-35-sonnet', baseURL: 'https://api.anthropic.com/v1',         model: 'claude-3-5-sonnet-20240620' },
-  { label: 'Anthropic Claude 3 Opus',     value: 'claude-3-opus',    baseURL: 'https://api.anthropic.com/v1',         model: 'claude-3-opus-20240229' },
-  { label: 'Anthropic Claude 3 Haiku',    value: 'claude-3-haiku',   baseURL: 'https://api.anthropic.com/v1',         model: 'claude-3-haiku-20240307' },
+    /* ---------- Anthropic ---------- */
+    { label: 'Anthropic Claude 3.5 Sonnet', value: 'claude-35-sonnet', baseURL: 'https://api.anthropic.com/v1', model: 'claude-3-5-sonnet-20240620' },
+    { label: 'Anthropic Claude 3 Opus', value: 'claude-3-opus', baseURL: 'https://api.anthropic.com/v1', model: 'claude-3-opus-20240229' },
+    { label: 'Anthropic Claude 3 Haiku', value: 'claude-3-haiku', baseURL: 'https://api.anthropic.com/v1', model: 'claude-3-haiku-20240307' },
 
-  /* ---------- Google Gemini ---------- */
-  { label: 'Google Gemini 1.5 Flash', value: 'gemini-1-5-flash', baseURL: 'https://generativelanguage.googleapis.com/v1beta', model: 'models/gemini-1.5-flash' },
-  { label: 'Google Gemini 1.5 Pro',   value: 'gemini-1-5-pro',   baseURL: 'https://generativelanguage.googleapis.com/v1beta', model: 'models/gemini-1.5-pro' },
-  { label: 'Google Gemini 2.5 Flash', value: 'gemini-2-5-flash', baseURL: 'https://generativelanguage.googleapis.com/v1beta', model: 'models/gemini-2.5-flash' },
-  { label: 'Google Gemini 2.5 Pro',   value: 'gemini-2-5-pro',   baseURL: 'https://generativelanguage.googleapis.com/v1beta', model: 'models/gemini-2.5-pro' },
+    /* ---------- Google Gemini ---------- */
+    { label: 'Google Gemini 1.5 Flash', value: 'gemini-1-5-flash', baseURL: 'https://generativelanguage.googleapis.com/v1beta', model: 'models/gemini-1.5-flash' },
+    { label: 'Google Gemini 1.5 Pro', value: 'gemini-1-5-pro', baseURL: 'https://generativelanguage.googleapis.com/v1beta', model: 'models/gemini-1.5-pro' },
+    { label: 'Google Gemini 2.5 Flash', value: 'gemini-2-5-flash', baseURL: 'https://generativelanguage.googleapis.com/v1beta', model: 'models/gemini-2.5-flash' },
+    { label: 'Google Gemini 2.5 Pro', value: 'gemini-2-5-pro', baseURL: 'https://generativelanguage.googleapis.com/v1beta', model: 'models/gemini-2.5-pro' },
 
-  /* ---------- Moonshot ---------- */
-  { label: 'Moonshot Kimi 8k',  value: 'moonshot-8k',  baseURL: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-8k' },
-  { label: 'Moonshot Kimi 32k', value: 'moonshot-32k', baseURL: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-32k' },
-  { label: 'Moonshot Kimi 128k',value: 'moonshot-128k',baseURL: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-128k' },
+    /* ---------- Moonshot ---------- */
+    { label: 'Moonshot Kimi 8k', value: 'moonshot-8k', baseURL: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-8k' },
+    { label: 'Moonshot Kimi 32k', value: 'moonshot-32k', baseURL: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-32k' },
+    { label: 'Moonshot Kimi 128k', value: 'moonshot-128k', baseURL: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-128k' },
 
-  /* ---------- DeepSeek ---------- */
-  { label: 'DeepSeek Chat',   value: 'deepseek-chat',   baseURL: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
-  { label: 'DeepSeek Coder',  value: 'deepseek-coder',  baseURL: 'https://api.deepseek.com/v1', model: 'deepseek-coder' },
+    /* ---------- DeepSeek ---------- */
+    { label: 'DeepSeek Chat', value: 'deepseek-chat', baseURL: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
+    { label: 'DeepSeek Coder', value: 'deepseek-coder', baseURL: 'https://api.deepseek.com/v1', model: 'deepseek-coder' },
 
-  /* ---------- 通义千问(Qwen) ---------- */
-  { label: 'Qwen Turbo',   value: 'qwen-turbo',   baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-turbo' },
-  { label: 'Qwen Plus',    value: 'qwen-plus',    baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus' },
-  { label: 'Qwen Max',     value: 'qwen-max',     baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-max' },
+    /* ---------- 通义千问(Qwen) ---------- */
+    { label: 'Qwen Turbo', value: 'qwen-turbo', baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-turbo' },
+    { label: 'Qwen Plus', value: 'qwen-plus', baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus' },
+    { label: 'Qwen Max', value: 'qwen-max', baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-max' },
 
-  /* ---------- 智谱 GLM ---------- */
-  { label: 'GLM-4',      value: 'glm-4',      baseURL: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4' },
-  { label: 'GLM-4-Air',  value: 'glm-4-air',  baseURL: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-air' },
-  { label: 'GLM-4-Flash',value: 'glm-4-flash',baseURL: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash' },
+    /* ---------- 智谱 GLM ---------- */
+    { label: 'GLM-4', value: 'glm-4', baseURL: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4' },
+    { label: 'GLM-4-Air', value: 'glm-4-air', baseURL: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-air' },
+    { label: 'GLM-4-Flash', value: 'glm-4-flash', baseURL: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash' },
 
-  /* ---------- Baichuan ---------- */
-  { label: 'Baichuan 4',     value: 'baichuan-4',     baseURL: 'https://api.baichuan-ai.com/v1', model: 'Baichuan4' },
-  { label: 'Baichuan 3-Turbo',value: 'baichuan-3-turbo',baseURL: 'https://api.baichuan-ai.com/v1', model: 'Baichuan3-Turbo' },
+    /* ---------- Baichuan ---------- */
+    { label: 'Baichuan 4', value: 'baichuan-4', baseURL: 'https://api.baichuan-ai.com/v1', model: 'Baichuan4' },
+    { label: 'Baichuan 3-Turbo', value: 'baichuan-3-turbo', baseURL: 'https://api.baichuan-ai.com/v1', model: 'Baichuan3-Turbo' },
 
-  /* ---------- StepFun ---------- */
-  { label: 'StepFun 1v', value: 'step-1v', baseURL: 'https://api.stepfun.com/v1', model: 'step-1v-8k' },
-  { label: 'StepFun 1',  value: 'step-1',  baseURL: 'https://api.stepfun.com/v1', model: 'step-1-8k' },
+    /* ---------- StepFun ---------- */
+    { label: 'StepFun 1v', value: 'step-1v', baseURL: 'https://api.stepfun.com/v1', model: 'step-1v-8k' },
+    { label: 'StepFun 1', value: 'step-1', baseURL: 'https://api.stepfun.com/v1', model: 'step-1-8k' },
 
-  /* ---------- 零一万物 01.AI ---------- */
-  { label: 'Yi-Large',       value: 'yi-large',       baseURL: 'https://api.lingyiwanwu.com/v1', model: 'yi-large' },
-  { label: 'Yi-Large-Turbo', value: 'yi-large-turbo', baseURL: 'https://api.lingyiwanwu.com/v1', model: 'yi-large-turbo' },
+    /* ---------- 零一万物 01.AI ---------- */
+    { label: 'Yi-Large', value: 'yi-large', baseURL: 'https://api.lingyiwanwu.com/v1', model: 'yi-large' },
+    { label: 'Yi-Large-Turbo', value: 'yi-large-turbo', baseURL: 'https://api.lingyiwanwu.com/v1', model: 'yi-large-turbo' },
 
-  /* ---------- Custom ---------- */
-  { label: 'Custom', value: 'custom', baseURL: '', model: '' },
-];
+    /* ---------- Custom ---------- */
+    { label: 'Custom', value: 'custom', baseURL: '', model: '' },
+  ];
   const [selectedPreset, setSelectedPreset] = useState('');
 
   const scrollToBottom = () => {
@@ -219,13 +221,13 @@ const presets = [
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || (useCustomKey && !apiKey)) return;
-    
+
     // Check if variables are filled when hasVariables is true
     if (hasVariables && variableValues) {
-      const requiredVariables = Object.keys(variableValues).filter(key => 
+      const requiredVariables = Object.keys(variableValues).filter(key =>
         !variableValues[key] || variableValues[key].toString().trim() === ''
       );
-      
+
       if (requiredVariables.length > 0) {
         toast({
           variant: "destructive",
@@ -234,14 +236,14 @@ const presets = [
         return;
       }
     }
-    
+
     setIsLoading(true);
     const newMessage = {
       role: 'user',
       content: inputMessage,
       timestamp: new Date().toISOString()
     };
-    
+
     setMessages(prev => [...prev, newMessage]);
     setInputMessage('');
 
@@ -251,7 +253,7 @@ const presets = [
       timestamp: new Date().toISOString()
     };
     setMessages(prev => [...prev, aiMessage]);
-    
+
     try {
       const response = await apiClient.chat(
         messages.concat(newMessage).map(msg => ({
@@ -296,8 +298,8 @@ const presets = [
       }
     } catch (error) {
       console.error('Error:', error);
-      const errorMessage = t?.promptDetailPage?.chatTest?.sendMessageErrorPrefix?.replace('{errorMessage}', error.message) || 
-                          `错误：${error.message || t?.promptDetailPage?.chatTest?.sendMessageErrorNetwork || '请求失败，请检查 API Key 是否正确以及网络连接是否正常'}`;
+      const errorMessage = t?.promptDetailPage?.chatTest?.sendMessageErrorPrefix?.replace('{errorMessage}', error.message) ||
+        `错误：${error.message || t?.promptDetailPage?.chatTest?.sendMessageErrorNetwork || '请求失败，请检查 API Key 是否正确以及网络连接是否正常'}`;
       setMessages(prev => {
         const newMessages = [...prev];
         const lastMessage = newMessages[newMessages.length - 1];
@@ -382,8 +384,8 @@ const presets = [
       }
       return msg;
     });
-    
-    setMessages(updatedMessages); 
+
+    setMessages(updatedMessages);
     setTempEditingContent("");
 
     // Prepare for AI response
@@ -396,7 +398,7 @@ const presets = [
 
     try {
       const response = await apiClient.chat(
-        updatedMessages.map(msg => ({role: msg.role, content: msg.content})),
+        updatedMessages.map(msg => ({ role: msg.role, content: msg.content })),
         {
           apiKey: useCustomKey ? apiKey : undefined,
           model: useCustomKey ? customModel : selectedModel,
@@ -435,8 +437,8 @@ const presets = [
       }
     } catch (error) {
       console.error('Error:', error);
-      const errorMessage = t?.promptDetailPage?.chatTest?.sendMessageErrorPrefix?.replace('{errorMessage}', error.message) || 
-                          `错误：${error.message || t?.promptDetailPage?.chatTest?.sendMessageErrorNetwork || '请求失败，请检查 API Key 是否正确以及网络连接是否正常'}`;
+      const errorMessage = t?.promptDetailPage?.chatTest?.sendMessageErrorPrefix?.replace('{errorMessage}', error.message) ||
+        `错误：${error.message || t?.promptDetailPage?.chatTest?.sendMessageErrorNetwork || '请求失败，请检查 API Key 是否正确以及网络连接是否正常'}`;
       setMessages(prev => {
         const newMessages = [...prev];
         const lastMessage = newMessages[newMessages.length - 1];
@@ -480,7 +482,25 @@ const presets = [
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            
+
+            {/* <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowMultiModelTest(true)}
+                    className="hover:bg-primary/10 hover:text-primary h-8 w-8"
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p>{t?.promptDetailPage?.chatTest?.multiModelTest?.triggerButton || 'Multi-model Comparison'}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider> */}
+
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -500,7 +520,7 @@ const presets = [
             </TooltipProvider>
           </div>
         </div>
-        
+
         {showSettings && (
           <div className="mt-4 space-y-4 p-4 bg-muted/30 rounded-lg border border-border/50 animate-in fade-in-50 duration-200">
             <div className="space-y-3">
@@ -584,9 +604,9 @@ const presets = [
                 </div>
               )}
             </div>
-            
+
             <Separator className="my-2 bg-border/50" />
-            
+
             {!useCustomKey && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -618,7 +638,7 @@ const presets = [
                 </Select>
               </div>
             )}
-            
+
             <div className="space-y-2">
               <label className="text-sm font-medium flex items-center gap-1">
                 {t.chatTest.modelParametersLabel}
@@ -760,7 +780,7 @@ const presets = [
                 </p>
               </div>
             )}
-            
+
             {messages.map((message, index) => {
               const messageId = `${message.role}-${message.timestamp}-${index}`;
               const isEditing = editingMessage && editingMessage.id === messageId;
@@ -768,9 +788,8 @@ const presets = [
               return (
                 <div
                   key={messageId}
-                  className={`flex flex-col group animate-in slide-in-from-${message.role === 'user' ? 'right' : 'left'}-10 duration-300 ${
-                    message.role === 'user' ? 'items-end' : 'items-start'
-                  }`}
+                  className={`flex flex-col group animate-in slide-in-from-${message.role === 'user' ? 'right' : 'left'}-10 duration-300 ${message.role === 'user' ? 'items-end' : 'items-start'
+                    }`}
                 >
                   <div className="max-w-[80%] space-y-1.5">
                     <div className={`flex items-center gap-2 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -826,13 +845,12 @@ const presets = [
                       </div>
                     ) : (
                       <div
-                        className={`rounded-lg p-3 ${
-                          message.role === 'user'
-                            ? 'bg-primary text-primary-foreground'
-                            : message.content
+                        className={`rounded-lg p-3 ${message.role === 'user'
+                          ? 'bg-primary text-primary-foreground'
+                          : message.content
                             ? 'bg-muted/50 border border-border/30'
                             : 'bg-muted/30 border border-border/20'
-                        }`}
+                          }`}
                       >
                         {message.role === 'assistant' && !message.content ? (
                           <div className="flex items-center space-x-2 h-6">
@@ -915,7 +933,7 @@ const presets = [
             <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
-        
+
         <div className="shrink-0 p-4 border-t bg-background/80 backdrop-blur-sm">
           <div className="flex gap-2 items-end">
             <Textarea
@@ -950,6 +968,20 @@ const presets = [
           </p>
         </div>
       </CardContent>
+
+      <MultiModelTestModal
+        open={showMultiModelTest}
+        onOpenChange={setShowMultiModelTest}
+        prompt={prompt}
+        variableValues={variableValues}
+        availableModels={availableModels}
+        sharedParams={{
+          temperature,
+          maxTokens,
+          topP
+        }}
+        t={t}
+      />
     </Card>
   );
 }
