@@ -29,3 +29,11 @@ docker save supabase/postgres:15.8.1.085 | gzip > supabase-postgres-15.8.1.085.t
 docker save timberio/vector:0.28.1-alpine | gzip > timberio-vector-0.28.1-alpine.tar.gz
 docker save supabase/supavisor:2.7.4 | gzip > supabase-supavisor-2.7.4.tar.gz
 docker save promptminder:v0.1.1 | gzip > promptminder-v0.1.1.tar.gz
+
+
+
+docker pull --platform linux/amd64  nacos/nacos-server:v2.5.2
+docker pull --platform linux/amd64  nacos/nacos-server:v2.4.3
+
+docker save nacos/nacos-server:v2.4.3 | gzip > nacos-nacos-server-v2.4.3.tar.gz
+docker save nacos/nacos-server:v2.5.2 | gzip > nacos-nacos-server-v2.5.2.tar.gz
