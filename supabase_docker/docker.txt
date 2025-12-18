@@ -37,3 +37,7 @@ docker pull --platform linux/amd64  nacos/nacos-server:v2.4.3
 
 docker save nacos/nacos-server:v2.4.3 | gzip > nacos-nacos-server-v2.4.3.tar.gz
 docker save nacos/nacos-server:v2.5.2 | gzip > nacos-nacos-server-v2.5.2.tar.gz
+
+
+
+docker build  -t  promptminder:v0.1.3 .
