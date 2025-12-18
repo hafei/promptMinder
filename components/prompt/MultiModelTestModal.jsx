@@ -16,6 +16,7 @@ import { Play, StopCircle, Loader2, Info, PanelLeftClose, PanelLeftOpen, Copy, C
 import { apiClient } from '@/lib/api-client';
 import { replaceVariables } from '@/lib/promptVariables';
 import { cn } from "@/lib/utils";
+import { copyToClipboard } from '@/lib/clipboard';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export default function MultiModelTestModal({
@@ -161,7 +162,7 @@ export default function MultiModelTestModal({
         const content = results[model]?.content;
         if (!content) return;
 
-        navigator.clipboard.writeText(content).then(() => {
+        copyToClipboard(content, () => {
             setCopiedModel(model);
             setTimeout(() => setCopiedModel(null), 2000);
         });
