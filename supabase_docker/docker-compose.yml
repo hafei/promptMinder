@@ -404,7 +404,11 @@ services:
         "-c",
         "config_file=/etc/postgresql/postgresql.conf",
         "-c",
-        "log_min_messages=fatal" # prevents Realtime polling queries from appearing in logs
+        "log_min_messages=fatal", # prevents Realtime polling queries from appearing in logs
+        "-c",
+        "app.supabase_auth_url=${SUPABASE_AUTH_URL:-http://localhost:8000}",
+        "-c",
+        "app.email_api_url=${EMAIL_API_URL:-http://host.docker.internal:8081/message/normal/no-attach}"
       ]
 
   vector:

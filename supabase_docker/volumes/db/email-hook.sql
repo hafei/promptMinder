@@ -1,5 +1,9 @@
 -- Email Hook PostgreSQL 函数 (修正版)
 -- GoTrue 期望接收单个 JSONB 参数
+--
+-- 配置变量 (通过 postgresql.conf 或 -c 参数设置):
+--   app.supabase_auth_url: Supabase Auth 验证 URL 基础地址 (例如: http://localhost:8000)
+--   app.email_api_url: 企业邮件 REST API 地址 (例如: http://host.docker.internal:8081/message/normal/no-attach)
 
 -- 删除旧函数
 DROP FUNCTION IF EXISTS public.send_email_hook(jsonb, jsonb);
@@ -20,6 +24,8 @@ DECLARE
   token_hash TEXT;
   redirect_to TEXT;
   verification_url TEXT;
+  supabase_auth_url TEXT;
+  email_api_url TEXT;
   subject TEXT;
   content TEXT;
   request_body jsonb;
@@ -29,12 +35,16 @@ BEGIN
   email_data := input->'email_data';
   
   email := user_data->>'email';
-  action_type := COALESCE(email_data->>'email_action_type', 'signup');
+  action_type := COALESCE(email_data->>'email_action_type', 'signup'); -- 默认为 signup
   token_hash := email_data->>'token_hash';
   redirect_to := COALESCE(email_data->>'redirect_to', 'http://localhost:3010');
 
+  -- 从配置读取 URL (带默认值)
+  supabase_auth_url := COALESCE(current_setting('app.supabase_auth_url', true), 'http://localhost:8000');
+  email_api_url := COALESCE(current_setting('app.email_api_url', true), 'http://host.docker.internal:8081/message/normal/no-attach');
+
   -- 构建验证 URL
-  verification_url := 'http://localhost:8000/auth/v1/verify?token=' || token_hash || '&type=' || action_type || '&redirect_to=' || redirect_to;
+  verification_url := supabase_auth_url || '/auth/v1/verify?token=' || token_hash || '&type=' || action_type || '&redirect_to=' || redirect_to;
 
   -- 设置邮件主题和内容
   CASE action_type
@@ -64,7 +74,7 @@ BEGIN
 
   -- 使用 pg_net 发送 HTTP 请求
   PERFORM net.http_post(
-    url := 'http://host.docker.internal:8081/message/normal/no-attach',
+    url := email_api_url,
     headers := jsonb_build_object('Content-Type', 'application/json', 'token', '{"tenantId": "PromptMinder"}'),
     body := request_body
   );
