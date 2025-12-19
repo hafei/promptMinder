@@ -4,6 +4,9 @@
 -- 配置变量 (通过 postgresql.conf 或 -c 参数设置):
 --   app.supabase_auth_url: Supabase Auth 验证 URL 基础地址 (例如: http://localhost:8000)
 --   app.email_api_url: 企业邮件 REST API 地址 (例如: http://host.docker.internal:8081/message/normal/no-attach)
+--   app.email_from: 发件人邮箱地址 (例如: it-platform@dev.zo)
+--   app.email_username: 邮件服务用户名 (例如: it-platform)
+--   app.email_password: 邮件服务密码
 
 -- 删除旧函数
 DROP FUNCTION IF EXISTS public.send_email_hook(jsonb, jsonb);
@@ -26,6 +29,9 @@ DECLARE
   verification_url TEXT;
   supabase_auth_url TEXT;
   email_api_url TEXT;
+  email_from TEXT;
+  email_username TEXT;
+  email_password TEXT;
   subject TEXT;
   content TEXT;
   request_body jsonb;
@@ -39,9 +45,12 @@ BEGIN
   token_hash := email_data->>'token_hash';
   redirect_to := COALESCE(email_data->>'redirect_to', 'http://localhost:3010');
 
-  -- 从配置读取 URL (带默认值)
+  -- 从配置读取 URL 和邮件凭证 (带默认值)
   supabase_auth_url := COALESCE(current_setting('app.supabase_auth_url', true), 'http://localhost:8000');
   email_api_url := COALESCE(current_setting('app.email_api_url', true), 'http://host.docker.internal:8081/message/normal/no-attach');
+  email_from := COALESCE(current_setting('app.email_from', true), 'it-platform@dev.zo');
+  email_username := COALESCE(current_setting('app.email_username', true), 'it-platform');
+  email_password := COALESCE(current_setting('app.email_password', true), '');
 
   -- 构建验证 URL
   verification_url := supabase_auth_url || '/auth/v1/verify?token=' || token_hash || '&type=' || action_type || '&redirect_to=' || redirect_to;
@@ -63,9 +72,9 @@ BEGIN
   -- 构建请求体
   request_body := jsonb_build_object(
     'type', 2,
-    'from', 'it-platform@dev.zo',
-    'userName', 'it-platform',
-    'password', '1qaz@WSX3edc',
+    'from', email_from,
+    'userName', email_username,
+    'password', email_password,
     'bizScene', 'Supabase Auth - ' || action_type,
     'receivers', jsonb_build_array(email),
     'subject', subject,
