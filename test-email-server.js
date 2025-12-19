@@ -541,7 +541,7 @@ function renderEmailDetail(emailLog) {
   const subject = escapeHtml(payload.subject);
   const from = escapeHtml(payload.from);
   const receivers = payload.receivers.map(r => escapeHtml(r)).join(', ');
-  const content = escapeHtml(payload.content);
+  const content = payload.content; // 保持原始 HTML 内容，不转义
   const payloadJson = JSON.stringify(payload, null, 2).replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const bizScene = payload.bizScene ? escapeHtml(payload.bizScene) : '-';
   const typeText = payload.type === 1 ? '普通邮件' : payload.type === 2 ? '通知类邮件' : payload.type;
@@ -769,6 +769,14 @@ function renderEmailDetail(emailLog) {
             <div class="section">
                 <div class="section-title">邮件内容</div>
                 <div class="email-content">${content}</div>
+            </div>
+            
+            <!-- HTML 渲染 -->
+            <div class="section">
+                <div class="section-title">HTML 渲染预览</div>
+                <div style="background: white; padding: 15px; border-radius: 4px; border: 1px solid #ddd; min-height: 100px;">
+                    ${content}
+                </div>
             </div>
             
             <!-- 验证结果 -->

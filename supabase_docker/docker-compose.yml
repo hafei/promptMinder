@@ -158,9 +158,12 @@ services:
       # GOTRUE_HOOK_SEND_SMS_URI: "pg-functions://postgres/public/custom_access_token_hook"
       # GOTRUE_HOOK_SEND_SMS_SECRETS: "v1,whsec_VGhpcyBpcyBhbiBleGFtcGxlIG9mIGEgc2hvcnRlciBCYXNlNjQgc3RyaW5n"
 
-      # GOTRUE_HOOK_SEND_EMAIL_ENABLED: "false"
-      # GOTRUE_HOOK_SEND_EMAIL_URI: "http://host.docker.internal:54321/functions/v1/email_sender"
-      # GOTRUE_HOOK_SEND_EMAIL_SECRETS: "v1,whsec_VGhpcyBpcyBhbiBleGFtcGxlIG9mIGEgc2hvcnRlciBCYXNlNjQgc3RyaW5n"
+      # Email Hook Configuration - 使用 PostgreSQL 函数发送邮件
+      # 使用 pg-functions:// 协议绕过 HTTP localhost 限制
+      # 函数通过 pg_net 扩展异步调用企业邮件 REST API
+      GOTRUE_HOOK_SEND_EMAIL_ENABLED: "true"
+      GOTRUE_HOOK_SEND_EMAIL_URI: "pg-functions://postgres/public/send_email_hook"
+      # GOTRUE_HOOK_SEND_EMAIL_SECRETS: "${EMAIL_HOOK_SECRET}"
 
   rest:
     container_name: supabase-rest
@@ -373,6 +376,8 @@ services:
       - ./volumes/db/pooler.sql:/docker-entrypoint-initdb.d/migrations/99-pooler.sql:Z
 
       - ./volumes/db/z01-init.sql:/docker-entrypoint-initdb.d/migrations/99-init.sql:Z
+      # Email Hook 函数 (通过 pg_net 调用企业邮件 REST API)
+      - ./volumes/db/email-hook.sql:/docker-entrypoint-initdb.d/migrations/99-email-hook.sql:Z
       # Use named volume to persist pgsodium decryption key between restarts
       - db-config:/etc/postgresql-custom
     healthcheck:
