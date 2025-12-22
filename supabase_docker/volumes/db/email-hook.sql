@@ -3,6 +3,7 @@
 --
 -- 配置变量 (通过 postgresql.conf 或 -c 参数设置):
 --   app.supabase_auth_url: Supabase Auth 验证 URL 基础地址 (例如: http://localhost:8000)
+--   app.site_url: 网站 URL，用于验证后的重定向 (例如: http://localhost:3011)
 --   app.email_api_url: 企业邮件 REST API 地址 (例如: http://host.docker.internal:8081/message/normal/no-attach)
 --   app.email_from: 发件人邮箱地址 (例如: it-platform@dev.zo)
 --   app.email_username: 邮件服务用户名 (例如: it-platform)
@@ -45,10 +46,9 @@ BEGIN
   email := user_data->>'email';
   action_type := COALESCE(email_data->>'email_action_type', 'signup'); -- 默认为 signup
   token_hash := email_data->>'token_hash';
-  redirect_to := COALESCE(email_data->>'redirect_to', 'http://localhost:3010');
-
   -- 从配置读取 URL 和邮件凭证 (带默认值)
   supabase_auth_url := COALESCE(current_setting('app.supabase_auth_url', true), 'http://localhost:8000');
+  redirect_to := COALESCE(current_setting('app.site_url', true), 'http://localhost:3011');
   email_api_url := COALESCE(current_setting('app.email_api_url', true), 'http://host.docker.internal:8081/message/normal/no-attach');
   email_from := COALESCE(current_setting('app.email_from', true), 'it-platform@dev.zo');
   email_username := COALESCE(current_setting('app.email_username', true), 'it-platform');
