@@ -1,64 +1,150 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth.js'
-import { getSupabaseClient } from '@/lib/getSupabaseClient';
+import { requireUserId } from '@/lib/auth.js'
+import { resolveTeamContext } from '@/lib/team-request.js'
+import { handleApiError } from '@/lib/handle-api-error.js'
 import { generateUUID } from '@/lib/utils';
 
-export async function GET(request) {
-  const supabase = getSupabaseClient();
-  if (!supabase) return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
-  const { userId } = await auth()
-  
-  // 获取公共标签和用户私有标签
-  const { data: tags, error } = await supabase
-    .from('tags')
-    .select('*')
-    .or(`user_id.is.null,user_id.eq.${userId}`)
-    .order('name');
+function applyTagFilters(query, { teamId, userId }) {
+  let baseQuery
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (teamId) {
+    // Get team tags
+    baseQuery = query.eq('team_id', teamId)
+  } else {
+    // Get personal tags - use user_id field for filtering
+    baseQuery = query.is('team_id', null).eq('user_id', userId)
   }
 
-  return NextResponse.json(tags);
+  return baseQuery
+}
+
+export async function GET(request) {
+  try {
+    const userId = await requireUserId()
+    const { teamId, supabase, teamService } = await resolveTeamContext(request, userId, {
+      requireMembership: false,
+      allowMissingTeam: true
+    })
+
+    if (teamId) {
+      await teamService.requireMembership(teamId, userId)
+    }
+
+    const filters = { teamId, userId }
+
+    const { data: tags, error } = await applyTagFilters(
+      supabase
+        .from('tags')
+        .select('*'),
+      filters
+    )
+      .order('name');
+
+    if (error) {
+      throw error;
+    }
+
+    return NextResponse.json(tags);
+  } catch (error) {
+    return handleApiError(error, 'Unable to load tags')
+  }
 }
 
 export async function POST(request) {
-  const supabase = getSupabaseClient();
-  if (!supabase) return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
-  const { userId } = await auth();
-
   try {
-    const { name, isPublic } = await request.json();
-    
+    const userId = await requireUserId()
+    const { teamId, supabase, teamService } = await resolveTeamContext(request, userId, {
+      requireMembership: false,
+      allowMissingTeam: true
+    })
+
+    let targetTeamId = null
+    if (teamId) {
+      await teamService.requireMembership(teamId, userId)
+      targetTeamId = teamId
+    }
+
+    const { name } = await request.json();
+
+    // Check for duplicate name within the team/personal context
+    const nameCheckQuery = targetTeamId
+      ? supabase
+          .from('tags')
+          .select('id')
+          .eq('team_id', targetTeamId)
+          .eq('name', name)
+          .single()
+      : supabase
+          .from('tags')
+          .select('id')
+          .is('team_id', null)
+          .eq('user_id', userId)  // Use user_id instead of created_by
+          .eq('name', name)
+          .single()
+
+    const { data: existingTag, error: checkError } = await nameCheckQuery
+
+    if (checkError && checkError.code !== 'PGRST116') {
+      // PGRST116 is "not found" which is what we want
+      throw checkError
+    }
+
+    if (existingTag) {
+      return NextResponse.json(
+        {
+          error: targetTeamId
+            ? 'A tag with this name already exists in this team'
+            : 'A tag with this name already exists in your personal collection'
+        },
+        { status: 409 }
+      )
+    }
+
     const tagData = {
       id: generateUUID(),
+      team_id: targetTeamId,
+      user_id: targetTeamId ? null : userId,  // Set user_id only for personal tags
       name,
-      user_id: isPublic ? null : userId,
+      created_by: userId,
       created_at: new Date().toISOString(),
-      created_by: userId
+      updated_at: new Date().toISOString()
     };
 
     const { data: newTag, error } = await supabase
       .from('tags')
       .insert([tagData])
-      .select();
+      .select()
+      .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      // Handle unique constraint violation
+      if (error.code === '23505') {
+        return NextResponse.json(
+          {
+            error: targetTeamId
+              ? 'A tag with this name already exists in this team'
+              : 'A tag with this name already exists in your personal collection'
+          },
+          { status: 409 }
+        )
+      }
+      throw error;
     }
 
-    return NextResponse.json(newTag[0]);
+    return NextResponse.json(newTag);
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return handleApiError(error, 'Unable to create tag')
   }
 }
 
 export async function DELETE(request) {
-  const supabase = getSupabaseClient();
-  if (!supabase) return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
-  const { userId } = await auth();
-  
   try {
+    const userId = await requireUserId()
+    const { teamId, supabase, teamService } = await resolveTeamContext(request, userId, {
+      requireMembership: false,
+      allowMissingTeam: true
+    })
+
     const { searchParams } = new URL(request.url);
     const tagId = searchParams.get('id');
 
@@ -73,14 +159,18 @@ export async function DELETE(request) {
       return NextResponse.json({ error: '标签不存在' }, { status: 404 });
     }
 
-    // 检查是否是公共标签
-    if (!tag.user_id) {
-      return NextResponse.json({ error: '不能删除公共标签' }, { status: 403 });
-    }
-
-    // 检查是否是用户自己的标签
-    if (tag.user_id !== userId) {
-      return NextResponse.json({ error: '无权删除此标签' }, { status: 403 });
+    // 检查权限
+    if (tag.team_id) {
+      // Team tag - check if user is member of the team
+      if (tag.team_id !== teamId) {
+        return NextResponse.json({ error: '无权删除此标签' }, { status: 403 });
+      }
+      await teamService.requireMembership(tag.team_id, userId)
+    } else {
+      // Personal tag - check if user owns the tag
+      if (tag.created_by !== userId) {
+        return NextResponse.json({ error: '无权删除此标签' }, { status: 403 });
+      }
     }
 
     // 执行删除操作
@@ -90,21 +180,23 @@ export async function DELETE(request) {
       .eq('id', tagId);
 
     if (deleteError) {
-      return NextResponse.json({ error: deleteError.message }, { status: 500 });
+      throw deleteError;
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return handleApiError(error, 'Unable to delete tag')
   }
 }
 
 export async function PATCH(request) {
-  const supabase = getSupabaseClient();
-  if (!supabase) return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
-  const { userId } = await auth();
-  
   try {
+    const userId = await requireUserId()
+    const { teamId, supabase, teamService } = await resolveTeamContext(request, userId, {
+      requireMembership: false,
+      allowMissingTeam: true
+    })
+
     const { searchParams } = new URL(request.url);
     const tagId = searchParams.get('id');
     const { name } = await request.json();
@@ -120,30 +212,73 @@ export async function PATCH(request) {
       return NextResponse.json({ error: '标签不存在' }, { status: 404 });
     }
 
-    // 检查是否是公共标签
-    if (!tag.user_id) {
-      return NextResponse.json({ error: '不能修改公共标签' }, { status: 403 });
+    // 检查权限
+    if (tag.team_id) {
+      // Team tag - check if user is member of the team
+      if (tag.team_id !== teamId) {
+        return NextResponse.json({ error: '无权修改此标签' }, { status: 403 });
+      }
+      await teamService.requireMembership(tag.team_id, userId)
+    } else {
+      // Personal tag - check if user owns the tag
+      if (tag.created_by !== userId) {
+        return NextResponse.json({ error: '无权修改此标签' }, { status: 403 });
+      }
     }
 
-    // 检查是否是用户自己的标签
-    if (tag.user_id !== userId) {
-      return NextResponse.json({ error: '无权修改此标签' }, { status: 403 });
+    // Check for duplicate name within the team/personal context (excluding current tag)
+    const nameCheckQuery = tag.team_id
+      ? supabase
+          .from('tags')
+          .select('id')
+          .eq('team_id', tag.team_id)
+          .eq('name', name)
+          .neq('id', tagId)
+          .single()
+      : supabase
+          .from('tags')
+          .select('id')
+          .is('team_id', null)
+          .eq('user_id', userId)  // Use user_id instead of created_by
+          .eq('name', name)
+          .neq('id', tagId)
+          .single()
+
+    const { data: existingTag, error: checkError } = await nameCheckQuery
+
+    if (checkError && checkError.code !== 'PGRST116') {
+      // PGRST116 is "not found" which is what we want
+      throw checkError
+    }
+
+    if (existingTag) {
+      return NextResponse.json(
+        {
+          error: tag.team_id
+            ? 'A tag with this name already exists in this team'
+            : 'A tag with this name already exists in your personal collection'
+        },
+        { status: 409 }
+      )
     }
 
     // 执行更新操作
     const { data: updatedTag, error: updateError } = await supabase
       .from('tags')
-      .update({ name })
+      .update({
+        name,
+        updated_at: new Date().toISOString()
+      })
       .eq('id', tagId)
       .select()
       .single();
 
     if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+      throw updateError;
     }
 
     return NextResponse.json(updatedTag);
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return handleApiError(error, 'Unable to update tag')
   }
 }

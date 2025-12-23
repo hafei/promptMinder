@@ -3,7 +3,19 @@ import OpenAI from 'openai';
 
 const DEFAULT_API_KEY = process.env.CUSTOM_API_KEY;
 const DEFAULT_BASE_URL = process.env.CUSTOM_API_URL || 'https://open.bigmodel.cn/api/paas/v4';
-const DEFAULT_MODEL = process.env.CUSTOM_MODEL_NAME || 'gpt-3.5-turbo';
+const DEFAULT_MODEL_NAME = process.env.CUSTOM_MODEL_NAME;
+
+// 解析可用的模型列表
+const getAvailableModels = () => {
+  if (!DEFAULT_MODEL_NAME) return ['gpt-3.5-turbo'];
+  return DEFAULT_MODEL_NAME.split(',').map(model => model.trim()).filter(model => model.length > 0);
+};
+
+// 获取默认模型
+const getDefaultModel = () => {
+  const models = getAvailableModels();
+  return models.length > 0 ? models[0] : 'gpt-3.5-turbo';
+};
 
 export async function POST(request) {
   try {
@@ -20,7 +32,25 @@ export async function POST(request) {
     } = body;
 
     const finalApiKey = apiKey || DEFAULT_API_KEY;
-    const finalModel = (!model || model === 'default') ? DEFAULT_MODEL : model;
+    const availableModels = getAvailableModels();
+
+    // 处理模型选择
+    let finalModel;
+    if (!model || model === 'default') {
+      finalModel = getDefaultModel();
+    } else {
+      // 检查所选模型是否在可用模型列表中（如果使用默认配置）
+      if (!apiKey && availableModels.length > 1) {
+        if (availableModels.includes(model)) {
+          finalModel = model;
+        } else {
+          finalModel = getDefaultModel();
+        }
+      } else {
+        finalModel = model;
+      }
+    }
+
     const finalBaseURL = baseURL || DEFAULT_BASE_URL;
     
     if (!finalApiKey) {
@@ -84,6 +114,30 @@ export async function POST(request) {
   } catch (error) {
     return NextResponse.json(
       { error: error.message || '处理请求时发生错误' },
+      { status: 500 }
+    );
+  }
+}
+
+// GET endpoint to retrieve available models
+export async function GET() {
+  try {
+    const models = getAvailableModels();
+    const defaultModel = getDefaultModel();
+
+    return NextResponse.json({
+      models: models,
+      defaultModel: defaultModel
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Failed to retrieve models' },
       { status: 500 }
     );
   }

@@ -22,7 +22,6 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/api-client';
 import { useTeam } from '@/contexts/team-context';
-import { generateUUID } from '@/lib/utils';
 
 const CreatableSelect = dynamic(() => import('react-select/creatable'), {
   loading: () => <Skeleton className="h-10 w-full" />,
@@ -68,14 +67,37 @@ export default function EditPrompt({ params }) {
       }
 
       try {
-        const [promptData, tagsData] = await Promise.all([
+        const [promptData, tagsData, versionsData] = await Promise.all([
           apiClient.request(`/api/prompts/${promptId}`, activeTeamId ? { teamId: activeTeamId } : {}),
           apiClient.getTags(activeTeamId ? { teamId: activeTeamId } : {}),
+          apiClient.request(`/api/prompts/${promptId}/versions`, activeTeamId ? { teamId: activeTeamId } : {}),
         ]);
 
-        // 自动累加版本号
-        const currentVersion = promptData.version || '1.0.0';
-        const parts = currentVersion.split('.');
+        // 获取该 prompt_id 下最新版本的版本号
+        let latestVersion = promptData.version || '1.0.0';
+        if (Array.isArray(versionsData) && versionsData.length > 0) {
+          // 找出最大版本号 (按版本号各部分比较)
+          latestVersion = versionsData.reduce((maxVersion, v) => {
+            const current = v.version || '1.0.0';
+            const maxParts = maxVersion.split('.').map(p => parseInt(p, 10) || 0);
+            const currentParts = current.split('.').map(p => parseInt(p, 10) || 0);
+
+            // 补齐长度
+            const maxLen = Math.max(maxParts.length, currentParts.length);
+            while (maxParts.length < maxLen) maxParts.push(0);
+            while (currentParts.length < maxLen) currentParts.push(0);
+
+            // 逐位比较
+            for (let i = 0; i < maxLen; i++) {
+              if (currentParts[i] > maxParts[i]) return current;
+              if (currentParts[i] < maxParts[i]) return maxVersion;
+            }
+            return maxVersion;
+          }, '0.0.0');
+        }
+
+        // 自动累加版本号 (基于最新版本)
+        const parts = latestVersion.split('.');
         if (parts.length > 0) {
           const lastIndex = parts.length - 1;
           const lastPart = parseInt(parts[lastIndex], 10);
@@ -87,7 +109,7 @@ export default function EditPrompt({ params }) {
           promptData.version = parts.join('.');
         }
         setPrompt(promptData);
-        setOriginalVersion(currentVersion);
+        setOriginalVersion(latestVersion);
 
         let tagList = []
         if (Array.isArray(tagsData?.team)) {
@@ -139,14 +161,22 @@ export default function EditPrompt({ params }) {
       let result;
 
       if (isNewVersion) {
-        const newPromptPayload = {
-          ...prompt,
-          id: generateUUID(),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+        // Use the new create-version endpoint that respects team context
+        const versionPayload = {
+          title: prompt.title,
+          content: prompt.content,
+          description: prompt.description,
+          version: prompt.version,
+          tags: prompt.tags,
+          is_public: prompt.is_public,
+          cover_img: prompt.cover_img,
         };
-        delete newPromptPayload.team_id;
-        result = await apiClient.createPrompt(newPromptPayload, activeTeamId ? { teamId: activeTeamId } : {});
+
+        result = await apiClient.request(`/api/prompts/${promptId}/create-version`, {
+          method: 'POST',
+          body: versionPayload,
+          teamId: activeTeamId
+        });
         toast({ title: '成功', description: tp.createVersionSuccess });
         router.push(`/prompts/${result.id}`);
       } else {

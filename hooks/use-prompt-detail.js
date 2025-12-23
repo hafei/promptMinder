@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiClient } from '@/lib/api-client';
 
 export function usePromptDetail(id) {
   const router = useRouter();
@@ -44,21 +43,18 @@ export function usePromptDetail(id) {
         setSelectedVersion(normalizedPrompt.version);
 
         try {
-          const versionsResponse = await apiClient.getPrompts({
-            search: data.title,
-            limit: 100,
-          });
+          // Use the new versions API endpoint that respects team separation
+          const versionsResponse = await fetch(`/api/prompts/${id}/versions`);
+          if (!versionsResponse.ok) {
+            throw new Error(`Failed to load versions for prompt ${id}`);
+          }
+
+          const versions = await versionsResponse.json();
 
           if (cancelled) return;
 
-          const list = Array.isArray(versionsResponse?.prompts)
-            ? versionsResponse.prompts
-            : Array.isArray(versionsResponse)
-            ? versionsResponse
-            : [];
-
-          const sameTitle = list.filter((item) => item.title === data.title);
-          const sorted = sameTitle.sort(
+          // Sort versions by creation date (newest first)
+          const sorted = versions.sort(
             (a, b) => new Date(b.created_at) - new Date(a.created_at)
           );
           setVersions(sorted);

@@ -15,10 +15,10 @@ import { useClipboard } from '@/lib/clipboard';
  * VirtualPromptList component for efficiently rendering large collections of prompts
  * Uses virtualization to only render visible items for better performance
  */
-function VirtualPromptList({ 
-  prompts = [], 
-  onDelete, 
-  onShare, 
+function VirtualPromptList({
+  prompts = [],
+  onDelete,
+  onShare,
   containerHeight = 600,
   itemHeight = 200,
   itemsPerRow = 3,
@@ -28,12 +28,13 @@ function VirtualPromptList({
   const { toast } = useToast();
   const { copy } = useClipboard();
 
-  // Group prompts by title for version management
+  // Group prompts by prompt_id for version management
   const groupedPrompts = prompts.reduce((acc, prompt) => {
-    if (!acc[prompt.title]) {
-      acc[prompt.title] = [];
+    const key = prompt.prompt_id;  // 使用 prompt_id 唯一标识
+    if (!acc[key]) {
+      acc[key] = [];
     }
-    acc[prompt.title].push(prompt);
+    acc[key].push(prompt);
     return acc;
   }, {});
 
@@ -147,8 +148,8 @@ function VirtualPromptList({
               ? Array.isArray(latestPrompt.tags)
                 ? latestPrompt.tags
                 : latestPrompt.tags
-                    .split(",")
-                    .filter((tag) => tag.trim())
+                  .split(",")
+                  .filter((tag) => tag.trim())
               : []
             ).map((tag) => (
               <span
@@ -242,13 +243,13 @@ const arePropsEqual = (prevProps, nextProps) => {
   if (prevProps.prompts?.length !== nextProps.prompts?.length) {
     return false;
   }
-  
+
   // Deep compare prompts array for relevant properties
   if (prevProps.prompts && nextProps.prompts) {
     for (let i = 0; i < prevProps.prompts.length; i++) {
       const prevPrompt = prevProps.prompts[i];
       const nextPrompt = nextProps.prompts[i];
-      
+
       if (
         prevPrompt.id !== nextPrompt.id ||
         prevPrompt.title !== nextPrompt.title ||
@@ -261,7 +262,7 @@ const arePropsEqual = (prevProps, nextProps) => {
       }
     }
   }
-  
+
   // Compare other props
   return (
     prevProps.onDelete === nextProps.onDelete &&

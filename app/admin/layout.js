@@ -1,11 +1,12 @@
 "use client";
 import Link from "next/link";
-import { Shield, LayoutDashboard, ArrowLeft, LogOut } from "lucide-react";
+import { Shield, LayoutDashboard, ArrowLeft, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import AdminAuth, { useAdminAuth } from "@/components/admin/AdminAuth";
+import AdminProtected from "@/components/admin/AdminProtected";
+import { useAuth } from "@/contexts/auth-context";
 
 function AdminLayoutContent({ children }) {
-  const { email, logout } = useAdminAuth();
+  const { user, signOut } = useAuth();
 
   return (
     <div className="min-h-screen bg-background">
@@ -36,19 +37,27 @@ function AdminLayoutContent({ children }) {
                   贡献审核
                 </div>
               </Link>
-              
+              <Link href="/admin/users">
+                <div className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-muted transition-colors text-sm font-medium">
+                  <User className="w-4 h-4" />
+                  用户管理
+                </div>
+              </Link>
+
               {/* 管理员信息和登出 */}
               <div className="flex items-center gap-2 ml-4 pl-4 border-l">
-                <span className="text-sm text-muted-foreground">{email}</span>
-                <Button
+                <span className="text-sm text-muted-foreground">
+                  {user?.email || user?.display_name || "管理员"}
+                </span>
+                {/* <Button
                   variant="ghost"
                   size="sm"
-                  onClick={logout}
+                  onClick={signOut}
                   className="text-muted-foreground hover:text-destructive"
                 >
                   <LogOut className="w-4 h-4 mr-1" />
                   退出
-                </Button>
+                </Button> */}
               </div>
             </nav>
           </div>
@@ -73,8 +82,8 @@ function AdminLayoutContent({ children }) {
 
 export default function AdminLayout({ children }) {
   return (
-    <AdminAuth>
+    <AdminProtected>
       <AdminLayoutContent>{children}</AdminLayoutContent>
-    </AdminAuth>
+    </AdminProtected>
   );
 }

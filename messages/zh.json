@@ -39,7 +39,7 @@
   },
   "hero": {
     "mainTitle": "让AI提示词管理更简单",
-    "subtitleStart": "开源的提示词管理平台，为",
+    "subtitleStart": "提示词管理平台，为",
     "animatedText": [
       "AI从业者",
       "内容创作者",
@@ -48,7 +48,7 @@
     ],
     "subtitleEnd": "打造",
     "description": "支持版本控制、团队协作、智能分类等功能",
-    "ctaButton": "免费开始使用",
+    "ctaButton": "开始使用",
     "secondaryCta": "浏览提示词合集",
     "quickHighlights": [
       {
@@ -449,6 +449,7 @@
     "deleteConfirmDescription": "确定要删除这个提示词吗？此操作无法撤销。",
     "copySuccessTitle": "复制成功",
     "copySuccessDescription": "提示词内容已复制到剪贴板",
+    "copySuccessDescriptionRendered": "已复制渲染后的提示词内容",
     "copyErrorTitle": "复制失败",
     "copyErrorDescription": "请重试",
     "deleteError": "删除失败",
@@ -512,7 +513,21 @@
       "currentPromptPrefix": "当前使用",
       "currentPromptSuffix": "提示进行对话",
       "defaultInputHint": "输入消息开始对话",
-      "variablesRequiredError": "测试前请先填写所有必需的变量字段。"
+      "variablesRequiredError": "测试前请先填写所有必需的变量字段。",
+      "multiModelTest": {
+        "title": "多模型测试",
+        "triggerButton": "多模型对比测试",
+        "description": "使用选定的模型同时测试当前提示词，对比不同模型的效果。",
+        "selectModels": "选择模型",
+        "runTest": "运行测试",
+        "stopTest": "停止测试",
+        "sharedParams": "参数",
+        "noModelsSelected": "请至少选择一个模型",
+        "resultFor": "{model} 的结果",
+        "loading": "正在生成...",
+        "error": "获取结果失败",
+        "inputPlaceholder": "输入测试消息..."
+      }
     }
   },
   "chatTest": {

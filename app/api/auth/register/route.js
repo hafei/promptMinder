@@ -1,120 +1,117 @@
 import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabaseServer.js'
-import { 
-  hashPassword, 
-  generateSessionToken, 
-  SESSION_DURATION_MS, 
-  AUTH_COOKIE_NAME 
-} from '@/lib/local-auth/password.js'
 
 export async function POST(request) {
   try {
-    const { username, password, displayName } = await request.json()
-    
+    const { email, password, displayName } = await request.json()
+
     // 验证输入
-    if (!username || !password) {
+    if (!email || !password) {
       return NextResponse.json(
-        { error: '用户名和密码不能为空' },
+        { error: '邮箱和密码不能为空' },
         { status: 400 }
       )
     }
-    
-    if (username.length < 3 || username.length > 50) {
+
+    // 验证邮箱格式
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
       return NextResponse.json(
-        { error: '用户名长度应在 3-50 个字符之间' },
+        { error: '请输入有效的邮箱地址' },
         { status: 400 }
       )
     }
-    
+
     if (password.length < 6) {
       return NextResponse.json(
         { error: '密码长度至少 6 个字符' },
         { status: 400 }
       )
     }
-    
-    // 验证用户名格式（只允许字母、数字、下划线）
-    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+
+    const supabase = createSupabaseServerClient()
+
+    // 使用 Supabase Auth 注册
+    const { data, error } = await supabase.auth.signUp({
+      email: email.toLowerCase(),
+      password,
+      options: {
+        data: {
+          display_name: displayName || email.split('@')[0]
+        }
+      }
+    })
+
+    if (error) {
+      console.error('Supabase Auth 注册错误:', error)
+
+      // 处理常见错误
+      if (error.message.includes('already registered')) {
+        return NextResponse.json(
+          { error: '该邮箱已被注册' },
+          { status: 409 }
+        )
+      }
+
       return NextResponse.json(
-        { error: '用户名只能包含字母、数字和下划线' },
+        { error: error.message || '注册失败' },
         { status: 400 }
       )
     }
-    
-    const supabase = createSupabaseServerClient()
-    
-    // 检查用户名是否已存在
-    const { data: existingUser } = await supabase
-      .from('users')
-      .select('id')
-      .eq('username', username.toLowerCase())
-      .single()
-    
-    if (existingUser) {
-      return NextResponse.json(
-        { error: '用户名已被使用' },
-        { status: 409 }
-      )
-    }
-    
-    // 创建用户
-    const passwordHash = hashPassword(password)
-    const { data: newUser, error: createError } = await supabase
-      .from('users')
-      .insert({
-        username: username.toLowerCase(),
-        password_hash: passwordHash,
-        display_name: displayName || username
+
+    // 检查是否需要邮箱确认
+    if (data.user && !data.session) {
+      // 需要邮箱确认
+      return NextResponse.json({
+        success: true,
+        needsEmailConfirmation: true,
+        message: '注册成功！请检查您的邮箱并点击确认链接。',
+        user: {
+          id: data.user.id,
+          email: data.user.email,
+          display_name: data.user.user_metadata?.display_name
+        }
       })
-      .select('id, username, display_name, avatar_url, is_admin')
-      .single()
-    
-    if (createError) {
-      console.error('创建用户失败:', createError)
-      return NextResponse.json(
-        { error: '注册失败，请稍后重试' },
-        { status: 500 }
-      )
     }
-    
-    // 创建会话
-    const sessionToken = generateSessionToken()
-    const expiresAt = new Date(Date.now() + SESSION_DURATION_MS)
-    
-    const { error: sessionError } = await supabase
-      .from('user_sessions')
-      .insert({
-        user_id: newUser.id,
-        token: sessionToken,
-        expires_at: expiresAt.toISOString()
+
+    // 注册成功且自动确认（无需邮箱验证）
+    if (data.session) {
+      const response = NextResponse.json({
+        success: true,
+        needsEmailConfirmation: false,
+        user: {
+          id: data.user.id,
+          email: data.user.email,
+          display_name: data.user.user_metadata?.display_name
+        }
       })
-    
-    if (sessionError) {
-      console.error('创建会话失败:', sessionError)
-      return NextResponse.json(
-        { error: '注册成功但登录失败，请手动登录' },
-        { status: 500 }
-      )
+
+      // 设置 auth token cookie
+      const isHttps = process.env.NEXT_PUBLIC_BASE_URL?.startsWith('https://')
+      response.cookies.set('sb-access-token', data.session.access_token, {
+        httpOnly: true,
+        secure: isHttps,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: data.session.expires_in
+      })
+      response.cookies.set('sb-refresh-token', data.session.refresh_token, {
+        httpOnly: true,
+        secure: isHttps,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 7 // 7 days
+      })
+
+      return response
     }
-    
-    // 设置 cookie
-    const cookieStore = await cookies()
-    // 只有在HTTPS环境下才设置secure属性
-    const isHttps = process.env.NEXT_PUBLIC_BASE_URL?.startsWith('https://')
-    cookieStore.set(AUTH_COOKIE_NAME, sessionToken, {
-      httpOnly: true,
-      secure: isHttps,
-      sameSite: 'lax',
-      path: '/',
-      expires: expiresAt
-    })
-    
+
     return NextResponse.json({
       success: true,
-      user: newUser
+      needsEmailConfirmation: true,
+      message: '注册成功！'
     })
-    
+
   } catch (error) {
     console.error('注册错误:', error)
     return NextResponse.json(

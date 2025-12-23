@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
-import { AUTH_COOKIE_NAME } from '@/lib/local-auth/password.js'
+
+// Supabase Auth cookie name
+const AUTH_COOKIE_NAME = 'sb-access-token'
 
 // 需要认证的路由
 const protectedRoutes = ['/prompts', '/teams']
@@ -10,11 +12,11 @@ function isProtectedRoute(pathname) {
 
 export default async function middleware(req) {
   const { pathname } = req.nextUrl
-  
+
   // 检查是否是受保护的路由
   if (isProtectedRoute(pathname)) {
     const sessionToken = req.cookies.get(AUTH_COOKIE_NAME)?.value
-    
+
     if (!sessionToken) {
       // 未登录，重定向到登录页
       const signInUrl = new URL('/sign-in', req.url)
@@ -22,24 +24,24 @@ export default async function middleware(req) {
       return NextResponse.redirect(signInUrl)
     }
   }
-  
+
   const response = NextResponse.next()
-  
+
   // Add image optimization headers for static assets
   if (pathname.match(/\.(jpg|jpeg|png|webp|avif|gif|svg)$/)) {
     // Set cache headers for images
     response.headers.set('Cache-Control', 'public, max-age=31536000, immutable')
-    
+
     // Add security headers for images
     response.headers.set('X-Content-Type-Options', 'nosniff')
-    
+
     // Add CORS headers for images if needed
     if (pathname.startsWith('/api/')) {
       response.headers.set('Access-Control-Allow-Origin', '*')
       response.headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS')
     }
   }
-  
+
   // Add performance headers for API routes
   if (pathname.startsWith('/api/')) {
     response.headers.set('X-DNS-Prefetch-Control', 'on')
@@ -47,7 +49,7 @@ export default async function middleware(req) {
     response.headers.set('X-Content-Type-Options', 'nosniff')
     response.headers.set('Referrer-Policy', 'origin-when-cross-origin')
   }
-  
+
   return response
 }
 

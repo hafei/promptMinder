@@ -28,6 +28,7 @@ import { generateUUID } from "@/lib/utils";
 import { PromptGrid, PromptGridSkeleton } from "@/components/prompt/PromptGrid";
 import { NewPromptDialog } from "@/components/prompt/NewPromptDialog";
 import { OptimizePromptDialog } from "@/components/prompt/OptimizePromptDialog";
+import { TeamSwitcher } from '@/components/team/TeamSwitcher';
 import { Search, Tags, ChevronDown } from "lucide-react";
 
 const TagFilter = dynamic(() => import("@/components/prompt/TagFilter"), {
@@ -63,7 +64,8 @@ export default function PromptsPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tagOptions, setTagOptions] = useState([]);
-  
+
+
   // 分页相关状态
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -107,6 +109,7 @@ export default function PromptsPage() {
       const params = {
         page: currentPage,
         limit: pageSize,
+        scope: activeTeamId ? 'team' : 'personal'
       };
 
       if (selectedTags.length > 0) {
@@ -150,9 +153,10 @@ export default function PromptsPage() {
 
   const confirmDelete = useCallback(async () => {
     if (!t?.promptsPage) return;
-    
+
     try {
-      await apiClient.deletePrompt(promptToDelete, activeTeamId ? { teamId: activeTeamId } : {});
+      const options = activeTeamId ? { teamId: activeTeamId } : {};
+      await apiClient.deletePrompt(promptToDelete, options);
       fetchPrompts();
       setDeleteDialogOpen(false);
       toast({
@@ -192,9 +196,10 @@ export default function PromptsPage() {
 
   const handleShare = useCallback(async (id) => {
     if (!t?.promptsPage) return;
-    
+
     try {
-      await apiClient.sharePrompt(id, activeTeamId ? { teamId: activeTeamId } : {});
+      const options = activeTeamId ? { teamId: activeTeamId } : {};
+      await apiClient.sharePrompt(id, options);
       const shareUrl = `${window.location.origin}/share/${id}`;
       await copy(shareUrl);
     } catch (error) {
@@ -207,20 +212,31 @@ export default function PromptsPage() {
     }
   }, [copy, toast, t?.promptsPage, activeTeamId]);
 
-  // Group prompts by title for easier rendering
+  // Group prompts by prompt_id for proper version management
   const groupedPrompts = useMemo(() => {
     const groups = prompts.reduce((acc, prompt) => {
+      // Use prompt_id as the unique key for grouping versions
+      const groupKey = prompt.prompt_id;
       const title = prompt.title || "Untitled";
-      if (!acc[title]) {
-        acc[title] = [];
+
+      if (!acc[groupKey]) {
+        acc[groupKey] = {
+          title,
+          promptId: prompt.prompt_id,
+          teamId: prompt.team_id,
+          versions: []
+        };
       }
-      acc[title].push(prompt);
+      acc[groupKey].versions.push(prompt);
       return acc;
     }, {});
 
-    return Object.entries(groups).map(([title, versions]) => ({
-      title,
-      versions: [...versions].sort(
+    // Convert the grouped object back to an array
+    return Object.values(groups).map(group => ({
+      title: group.title,
+      promptId: group.promptId,
+      teamId: group.teamId,
+      versions: [...group.versions].sort(
         (a, b) =>
           new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
       ),
@@ -258,6 +274,7 @@ export default function PromptsPage() {
 
     setIsSubmitting(true);
     try {
+      const options = activeTeamId ? { teamId: activeTeamId } : {};
       await apiClient.createPrompt(
         {
           ...newPrompt,
@@ -266,7 +283,7 @@ export default function PromptsPage() {
           updated_at: new Date().toISOString(),
           is_public: true,
         },
-        activeTeamId ? { teamId: activeTeamId } : {}
+        options
       );
 
       fetchPrompts();
@@ -425,24 +442,33 @@ export default function PromptsPage() {
       <div className="container px-4 py-10 sm:py-16 mx-auto max-w-7xl">
         <div className="space-y-8">
           <div className="flex flex-col space-y-6">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-              <h1 className="text-3xl font-bold tracking-tight">{tp.title}</h1>
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2 px-4 py-2 bg-secondary/30 rounded-lg">
-                  <span className="text-sm font-medium text-secondary-foreground">
-                    {tp.totalPrompts.replace(
-                      "{count}",
-                      pagination.total.toString()
-                    )}
-                  </span>
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+              <div className="space-y-2">
+                <h1 className="text-3xl font-bold tracking-tight">{tp.title}</h1>
+                <p className="text-sm text-muted-foreground">
+                  {activeTeamId ? "团队提示词库" : "个人提示词库"}
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <TeamSwitcher className="w-full sm:w-auto" />
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-secondary/30 rounded-lg">
+                    <span className="text-sm font-medium text-secondary-foreground">
+                      {tp.totalPrompts.replace(
+                        "{count}",
+                        pagination.total.toString()
+                      )}
+                    </span>
+                  </div>
+                  {!isPersonal && activeTeamId && (
+                    <Button asChild variant="outline" className="whitespace-nowrap">
+                      <Link href="/teams">{tp.manageTeam}</Link>
+                    </Button>
+                  )}
                 </div>
-                {!isPersonal && activeTeamId && (
-                  <Button asChild variant="outline" className="whitespace-nowrap">
-                    <Link href="/teams">{tp.manageTeam}</Link>
-                  </Button>
-                )}
               </div>
             </div>
+
 
             <div className="flex flex-col md:flex-row md:flex-wrap md:items-center gap-3 md:gap-4">
               <div className="relative w-full md:w-[320px]">
@@ -550,7 +576,7 @@ export default function PromptsPage() {
                   <div className="flex justify-between items-center">
                     <div>
                       <div className="font-medium text-primary">
-                        v{version.version}
+                        {version.version}
                       </div>
                       <div className="text-sm text-muted-foreground">
                         {new Date(version.created_at).toLocaleString()}

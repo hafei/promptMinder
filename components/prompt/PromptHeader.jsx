@@ -10,12 +10,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { copyToClipboard } from '@/lib/clipboard';
 
-export default function PromptHeader({ 
-  prompt, 
-  versions, 
-  selectedVersion, 
-  onVersionChange, 
+export default function PromptHeader({
+  prompt,
+  versions,
+  selectedVersion,
+  onVersionChange,
   onDelete,
   t,
   canManage = true
@@ -36,13 +37,15 @@ export default function PromptHeader({
       }
 
       const shareUrl = `${window.location.origin}/share/${prompt.id}`;
-      await navigator.clipboard.writeText(shareUrl);
-      setShareSuccess(true);
-      toast({
-        title: tp.shareSuccessTitle,
-        description: tp.shareSuccessDescription,
-      });
-      setTimeout(() => setShareSuccess(false), 2000);
+      const success = await copyToClipboard(shareUrl);
+      if (success) {
+        setShareSuccess(true);
+        toast({
+          title: tp.shareSuccessTitle,
+          description: tp.shareSuccessDescription,
+        });
+        setTimeout(() => setShareSuccess(false), 2000);
+      }
     } catch (err) {
       console.error('Failed to share prompt:', err);
       toast({
@@ -58,8 +61,8 @@ export default function PromptHeader({
       state: {
         prompt: {
           ...prompt,
-          tags: Array.isArray(prompt.tags) 
-            ? prompt.tags.join(',') 
+          tags: Array.isArray(prompt.tags)
+            ? prompt.tags.join(',')
             : (prompt.tags || '')
         }
       }
@@ -72,6 +75,30 @@ export default function PromptHeader({
         <h1 className="text-2xl sm:text-3xl font-bold">
           {prompt.title}
         </h1>
+        {prompt.prompt_id && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-muted-foreground/60 font-mono">
+              ID: {prompt.prompt_id}
+            </span>
+            <button
+              onClick={async () => {
+                const success = await copyToClipboard(prompt.prompt_id);
+                if (success) {
+                  toast({
+                    title: tp.copySuccessTitle,
+                    description: tp.copySuccessDescription,
+                  });
+                }
+              }}
+              className="text-muted-foreground/40 hover:text-muted-foreground transition-colors p-0.5"
+              title="Copy Prompt ID"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            </button>
+          </div>
+        )}
         <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
           {prompt.description}
         </p>
@@ -95,29 +122,29 @@ export default function PromptHeader({
                 >
                   <SelectTrigger className="h-5 text-xs border-none bg-transparent hover:bg-secondary/50 transition-colors">
                     <SelectValue placeholder={tp.selectVersionPlaceholder}>
-                      v{selectedVersion}
+                      {selectedVersion}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {versions.map((version) => (
-                      <SelectItem 
-                        key={version.id} 
+                      <SelectItem
+                        key={version.id}
                         value={version.version}
                         className="text-xs"
                       >
-                        v{version.version} ({new Date(version.created_at).toLocaleDateString()})
+                        {version.version} ({new Date(version.created_at).toLocaleDateString()})
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               ) : (
-                <span>v{prompt.version}</span>
+                <span>{prompt.version}</span>
               )}
             </div>
           </div>
           {prompt.tags?.length > 0 && prompt.tags.slice(0, 3).map((tag) => (
-            <Badge 
-              key={tag} 
+            <Badge
+              key={tag}
               variant="secondary"
               className="bg-primary/5 hover:bg-primary/10 transition-colors duration-200 text-xs px-2 py-0"
             >
@@ -125,7 +152,7 @@ export default function PromptHeader({
             </Badge>
           ))}
           {prompt.tags?.length > 3 && (
-            <Badge 
+            <Badge
               variant="secondary"
               className="bg-primary/5 hover:bg-primary/10 transition-colors duration-200 text-xs px-2 py-0"
             >

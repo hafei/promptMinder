@@ -82,6 +82,17 @@ ZHIPU_API_KEY=your_zhipu_api_key
 
 # 基础 URL
 NEXT_PUBLIC_BASE_URL=http://localhost:3000
+
+# 站点标识配置
+NEXT_PUBLIC_APP_NAME=PromptMinder
+NEXT_PUBLIC_APP_FAVICON=/favicon.ico
+NEXT_PUBLIC_APP_LOGO=/logo2.png
+NEXT_PUBLIC_APP_LOGO_WIDTH=40
+NEXT_PUBLIC_APP_LOGO_HEIGHT=40
+NEXT_PUBLIC_APP_DESCRIPTION="Make AI prompt management simpler and more efficient..."
+
+# 邮箱域名限制 (多个域名用逗号分隔)
+NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS=dev.zo
 ```
 
 4. **初始化数据库**
@@ -349,3 +360,18 @@ promptMinder/
 docker-compose exec db psql -U promptminder -d promptminder -c "GRANT UPDATE ON prompt_contributions TO anon; GRANT INSERT ON prompts TO anon;"
 
 docker-compose exec db psql -U promptminder -d promptminder -c "GRANT INSERT ON tags TO anon; GRANT DELETE ON tags TO anon;"
+
+
+
+
+
+
+npm install jsonwebtoken
+
+node -e "const jwt = require('jsonwebtoken'); const secret = 'super-secret-jwt-key-with-at-least-32-characters-1234'; const anon = jwt.sign({role:'anon',iss:'supabase',iat:Math.floor(Date.now()/1000),exp:Math.floor(Date.now()/1000)+3600*24*365}, secret); const service = jwt.sign({role:'service_role',iss:'supabase',iat:Math.floor(Date.now()/1000),exp:Math.floor(Date.now()/1000)+3600*24*365}, secret); console.log('ANON_KEY=' + anon); console.log('SERVICE_ROLE_KEY=' + service);"
+
+ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzY1NjM0MDMyLCJleHAiOjE3OTcxNzAwMzJ9.EY31L6e8y5KYrnwQ5zRVhK415wY_lb8Mu1BwVd88BV0
+SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3NjU2MzQwMzIsImV4cCI6MTc5NzE3MDAzMn0.CicU89LY8wgYgP6yAldIfveaqHZ1FQxD1hqfnaQ7YVc
+
+
+docker build  -t  promptminder:v0.1.1 .

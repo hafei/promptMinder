@@ -39,7 +39,7 @@
   },
   "hero": {
     "mainTitle": "Make AI Prompt Management Simpler",
-    "subtitleStart": "An open-source prompt platform built for ",
+    "subtitleStart": "A prompt platform built for ",
     "animatedText": [
       "AI practitioners",
       "content creators",
@@ -449,6 +449,7 @@
     "deleteConfirmDescription": "Are you sure you want to delete this prompt? This action cannot be undone.",
     "copySuccessTitle": "Copy Successful",
     "copySuccessDescription": "Prompt content copied to clipboard",
+    "copySuccessDescriptionRendered": "Rendered prompt content copied to clipboard",
     "copyErrorTitle": "Copy Failed",
     "copyErrorDescription": "Please try again",
     "deleteError": "Deletion failed",
@@ -512,7 +513,21 @@
       "currentPromptPrefix": "Currently using",
       "currentPromptSuffix": "prompt for conversation",
       "defaultInputHint": "Enter message to start conversation",
-      "variablesRequiredError": "Please fill in all required variable fields before testing."
+      "variablesRequiredError": "Please fill in all required variable fields before testing.",
+      "multiModelTest": {
+        "title": "Multi-model Testing",
+        "triggerButton": "Multi-model Comparison",
+        "description": "Test the current prompt with selected models simultaneously to compare their performance.",
+        "selectModels": "Select Models",
+        "runTest": "Run Test",
+        "stopTest": "Stop Test",
+        "sharedParams": "Parameters",
+        "noModelsSelected": "Please select at least one model",
+        "resultFor": "Result for {model}",
+        "loading": "Generating...",
+        "error": "Failed to get result",
+        "inputPlaceholder": "Enter test message..."
+      }
     }
   },
   "tagsPage": {

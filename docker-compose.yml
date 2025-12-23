@@ -21,7 +21,7 @@ services:
     # ports:
     #   - '${DB_PORT:-5432}:5432'
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-promptminder} -d ${POSTGRES_DB:-promptminder}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-promptminder} -d ${POSTGRES_DB:-promptminder}" ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -82,7 +82,7 @@ services:
       - minio-data:/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: [ "CMD", "mc", "ready", "local" ]
       interval: 30s
       timeout: 20s
       retries: 3
@@ -134,8 +134,8 @@ services:
       NODE_ENV: development
       # Supabase 连接配置
       SUPABASE_URL: http://kong:8000
-      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
-      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
       # 认证配置
       AUTH_SECRET: ${AUTH_SECRET:-your-auth-secret-key-min-32-chars-here}
       # 管理员用户名（多个用逗号分隔）
@@ -146,12 +146,24 @@ services:
       CUSTOM_API_KEY: ${CUSTOM_API_KEY:-}
       CUSTOM_API_URL: ${CUSTOM_API_URL:-}
       CUSTOM_MODEL_NAME: ${CUSTOM_MODEL_NAME:-}
+      # 站点标识配置 (可覆盖)
+      NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-PromptMinder}
+      NEXT_PUBLIC_APP_FAVICON: ${NEXT_PUBLIC_APP_FAVICON:-/favicon.ico}
+      NEXT_PUBLIC_APP_LOGO: ${NEXT_PUBLIC_APP_LOGO:-/logo2.png}
+      NEXT_PUBLIC_APP_LOGO_WIDTH: ${NEXT_PUBLIC_APP_LOGO_WIDTH:-40}
+      NEXT_PUBLIC_APP_LOGO_HEIGHT: ${NEXT_PUBLIC_APP_LOGO_HEIGHT:-40}
+      NEXT_PUBLIC_APP_DESCRIPTION: ${NEXT_PUBLIC_APP_DESCRIPTION:-Make AI prompt management simpler and more efficient...}
+      # 邮箱域名限制 (多个域名用逗号分隔)
+      NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS: ${NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS:-dev.zo}
     ports:
       - '3000:3000'
-
-# =====================================================
-# 数据卷
-# =====================================================
+    volumes:
+      # 挂载自定义 Logo 和 Favicon (解开注释并放置对应文件到同级目录)
+      - ./logo.png:/app/public/custom-logo.png
+      - ./favicon.ico:/app/public/custom-favicon.ico
+      # =====================================================
+      # 数据卷
+      # =====================================================
 volumes:
   db-data:
     name: promptminder-db-data

@@ -14,7 +14,7 @@ export function AuthProvider({ children }) {
     try {
       const res = await fetch('/api/auth/session', { credentials: 'include' })
       const data = await res.json()
-      
+
       setUser(data.user)
       setIsSignedIn(data.isSignedIn)
     } catch (error) {
@@ -30,43 +30,52 @@ export function AuthProvider({ children }) {
     fetchSession()
   }, [fetchSession])
 
-  // 登录
-  const login = async (username, password) => {
+  // 登录 (email + password)
+  const login = async (email, password) => {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
+      body: JSON.stringify({ email, password })
     })
-    
+
     const data = await res.json()
-    
+
     if (!res.ok) {
       throw new Error(data.error || '登录失败')
     }
-    
+
     setUser(data.user)
     setIsSignedIn(true)
     return data
   }
 
-  // 注册
-  const register = async (username, password, displayName) => {
+  // 注册 (email + password + displayName)
+  const register = async (email, password, displayName) => {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password, displayName })
+      body: JSON.stringify({ email, password, displayName })
     })
-    
+
     const data = await res.json()
-    
+
     if (!res.ok) {
       throw new Error(data.error || '注册失败')
     }
-    
-    setUser(data.user)
-    setIsSignedIn(true)
+
+    // 如果需要邮箱确认，不设置登录状态
+    if (data.needsEmailConfirmation) {
+      return data
+    }
+
+    // 如果自动确认，设置登录状态
+    if (data.user) {
+      setUser(data.user)
+      setIsSignedIn(true)
+    }
+
     return data
   }
 
@@ -77,7 +86,7 @@ export function AuthProvider({ children }) {
     } catch (error) {
       console.error('登出请求失败:', error)
     }
-    
+
     setUser(null)
     setIsSignedIn(false)
   }
@@ -95,7 +104,7 @@ export function AuthProvider({ children }) {
     register,
     logout,
     refreshSession,
-    // 兼容 Clerk 的 API
+    // 兼容性 API
     userId: user?.id || null
   }
 
@@ -128,19 +137,19 @@ export function useUser() {
 // 条件渲染组件 - 已登录时显示
 export function SignedIn({ children }) {
   const { isSignedIn, isLoaded } = useAuth()
-  
+
   if (!isLoaded) return null
   if (!isSignedIn) return null
-  
+
   return children
 }
 
 // 条件渲染组件 - 未登录时显示
 export function SignedOut({ children }) {
   const { isSignedIn, isLoaded } = useAuth()
-  
+
   if (!isLoaded) return null
   if (isSignedIn) return null
-  
+
   return children
 }

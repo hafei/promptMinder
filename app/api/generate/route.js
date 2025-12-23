@@ -1,6 +1,20 @@
 import OpenAI from 'openai';
 
-const DEFAULT_MODEL = process.env.CUSTOM_MODEL_NAME || 'gpt-3.5-turbo';
+const DEFAULT_MODEL_NAME = process.env.CUSTOM_MODEL_NAME;
+
+// 解析可用的模型列表
+const getAvailableModels = () => {
+  if (!DEFAULT_MODEL_NAME) return ['gpt-3.5-turbo'];
+  return DEFAULT_MODEL_NAME.split(',').map(model => model.trim()).filter(model => model.length > 0);
+};
+
+// 获取默认模型
+const getDefaultModel = () => {
+  const models = getAvailableModels();
+  return models.length > 0 ? models[0] : 'gpt-3.5-turbo';
+};
+
+const DEFAULT_MODEL = getDefaultModel();
 
 export async function POST(req) {
   try {

@@ -15,6 +15,7 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton } from '@/components/auth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { TeamSwitcher } from '@/components/team/TeamSwitcher';
+import { SITE_CONFIG } from '@/lib/site-config';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -74,16 +75,16 @@ export default function Navbar() {
     <nav className="border-b border-white/20 bg-white/70 backdrop-blur-xl shadow-sm">
       <div className="mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2">
-          <OptimizedImage 
-            src="/logo2.png" 
-            alt="PromptMinder" 
-            width={40} 
-            height={40} 
+          <OptimizedImage
+            src={SITE_CONFIG.appLogo}
+            alt={SITE_CONFIG.appName}
+            width={SITE_CONFIG.appLogoWidth}
+            height={SITE_CONFIG.appLogoHeight}
             priority
             className="rounded-xl"
           />
           <span className="hidden sm:block text-xl font-bold [-webkit-background-clip:text] [background-clip:text] text-transparent bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900">
-            PromptMinder
+            {SITE_CONFIG.appName}
           </span>
         </Link>
 
@@ -97,7 +98,7 @@ export default function Navbar() {
                     className={`${pathname === href
                       ? 'bg-slate-100 text-slate-900'
                       : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                    } flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors`}
+                      } flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors`}
                   >
                     <Link href={href}>
                       <Icon className="h-4 w-4" />
@@ -148,7 +149,7 @@ export default function Navbar() {
                       className={`${pathname === href
                         ? 'bg-primary/10 text-primary font-medium border-l-2 border-primary'
                         : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                      } flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200`}
+                        } flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200`}
                     >
                       <Icon className="h-4 w-4 shrink-0" />
                       <span className="text-sm">{label}</span>

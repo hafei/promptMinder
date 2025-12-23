@@ -46,3 +46,5 @@ next-env.d.ts
 .vscode
 .idea
 *.tar.gz
+# Snyk Security Extension - AI Rules (auto-generated)
+.github/instructions/snyk_rules.instructions.md

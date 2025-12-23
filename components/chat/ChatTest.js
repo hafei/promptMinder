@@ -1,10 +1,10 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Textarea } from "@/components/ui/textarea"
-import { Settings2, Send, Check, Copy, HelpCircle, Trash2, User, Bot, Edit3 } from "lucide-react"
+import { Settings2, Send, Check, Copy, HelpCircle, Trash2, User, Bot, Edit3, LayoutGrid } from "lucide-react"
 import {
   Select,
   SelectContent,
@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { copyToClipboard } from '@/lib/clipboard';
 import { Slider } from "@/components/ui/slider"
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -29,6 +30,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { replaceVariables } from '@/lib/promptVariables';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/api-client';
+import MultiModelTestModal from '@/components/prompt/MultiModelTestModal';
 
 // Message loading animation component
 function MessageLoading() {
@@ -102,6 +104,7 @@ export default function ChatTest({ prompt, variableValues = {}, hasVariables = f
   const [copiedMessageId, setCopiedMessageId] = useState(null);
   const [editingMessage, setEditingMessage] = useState(null);
   const [tempEditingContent, setTempEditingContent] = useState("");
+  const [showMultiModelTest, setShowMultiModelTest] = useState(false);
   const [customModel, setCustomModel] = useState(() => {
     if (typeof window !== 'undefined') {
       const savedSettings = localStorage.getItem(STORAGE_KEY);
@@ -116,58 +119,61 @@ export default function ChatTest({ prompt, variableValues = {}, hasVariables = f
     }
     return '';
   });
-const presets = [
-  /* ---------- OpenAI ---------- */
-  { label: 'OpenAI GPT-4o-mini',      value: 'openai-gpt4omini',   baseURL: 'https://api.openai.com/v1',               model: 'gpt-4o-mini' },
-  { label: 'OpenAI GPT-4o',           value: 'openai-gpt4o',       baseURL: 'https://api.openai.com/v1',               model: 'gpt-4o' },
-  { label: 'OpenAI GPT-4-turbo',      value: 'openai-gpt4turbo',   baseURL: 'https://api.openai.com/v1',               model: 'gpt-4-turbo' },
-  { label: 'OpenAI GPT-3.5-turbo',    value: 'openai-gpt35turbo',  baseURL: 'https://api.openai.com/v1',               model: 'gpt-3.5-turbo' },
+  // State for available models from server
+  const [availableModels, setAvailableModels] = useState([]);
+  const [defaultModel, setDefaultModel] = useState('');
+  const presets = [
+    /* ---------- OpenAI ---------- */
+    { label: 'OpenAI GPT-4o-mini', value: 'openai-gpt4omini', baseURL: 'https://api.openai.com/v1', model: 'gpt-4o-mini' },
+    { label: 'OpenAI GPT-4o', value: 'openai-gpt4o', baseURL: 'https://api.openai.com/v1', model: 'gpt-4o' },
+    { label: 'OpenAI GPT-4-turbo', value: 'openai-gpt4turbo', baseURL: 'https://api.openai.com/v1', model: 'gpt-4-turbo' },
+    { label: 'OpenAI GPT-3.5-turbo', value: 'openai-gpt35turbo', baseURL: 'https://api.openai.com/v1', model: 'gpt-3.5-turbo' },
 
-  /* ---------- Anthropic ---------- */
-  { label: 'Anthropic Claude 3.5 Sonnet', value: 'claude-35-sonnet', baseURL: 'https://api.anthropic.com/v1',         model: 'claude-3-5-sonnet-20240620' },
-  { label: 'Anthropic Claude 3 Opus',     value: 'claude-3-opus',    baseURL: 'https://api.anthropic.com/v1',         model: 'claude-3-opus-20240229' },
-  { label: 'Anthropic Claude 3 Haiku',    value: 'claude-3-haiku',   baseURL: 'https://api.anthropic.com/v1',         model: 'claude-3-haiku-20240307' },
+    /* ---------- Anthropic ---------- */
+    { label: 'Anthropic Claude 3.5 Sonnet', value: 'claude-35-sonnet', baseURL: 'https://api.anthropic.com/v1', model: 'claude-3-5-sonnet-20240620' },
+    { label: 'Anthropic Claude 3 Opus', value: 'claude-3-opus', baseURL: 'https://api.anthropic.com/v1', model: 'claude-3-opus-20240229' },
+    { label: 'Anthropic Claude 3 Haiku', value: 'claude-3-haiku', baseURL: 'https://api.anthropic.com/v1', model: 'claude-3-haiku-20240307' },
 
-  /* ---------- Google Gemini ---------- */
-  { label: 'Google Gemini 1.5 Flash', value: 'gemini-1-5-flash', baseURL: 'https://generativelanguage.googleapis.com/v1beta', model: 'models/gemini-1.5-flash' },
-  { label: 'Google Gemini 1.5 Pro',   value: 'gemini-1-5-pro',   baseURL: 'https://generativelanguage.googleapis.com/v1beta', model: 'models/gemini-1.5-pro' },
-  { label: 'Google Gemini 2.5 Flash', value: 'gemini-2-5-flash', baseURL: 'https://generativelanguage.googleapis.com/v1beta', model: 'models/gemini-2.5-flash' },
-  { label: 'Google Gemini 2.5 Pro',   value: 'gemini-2-5-pro',   baseURL: 'https://generativelanguage.googleapis.com/v1beta', model: 'models/gemini-2.5-pro' },
+    /* ---------- Google Gemini ---------- */
+    { label: 'Google Gemini 1.5 Flash', value: 'gemini-1-5-flash', baseURL: 'https://generativelanguage.googleapis.com/v1beta', model: 'models/gemini-1.5-flash' },
+    { label: 'Google Gemini 1.5 Pro', value: 'gemini-1-5-pro', baseURL: 'https://generativelanguage.googleapis.com/v1beta', model: 'models/gemini-1.5-pro' },
+    { label: 'Google Gemini 2.5 Flash', value: 'gemini-2-5-flash', baseURL: 'https://generativelanguage.googleapis.com/v1beta', model: 'models/gemini-2.5-flash' },
+    { label: 'Google Gemini 2.5 Pro', value: 'gemini-2-5-pro', baseURL: 'https://generativelanguage.googleapis.com/v1beta', model: 'models/gemini-2.5-pro' },
 
-  /* ---------- Moonshot ---------- */
-  { label: 'Moonshot Kimi 8k',  value: 'moonshot-8k',  baseURL: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-8k' },
-  { label: 'Moonshot Kimi 32k', value: 'moonshot-32k', baseURL: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-32k' },
-  { label: 'Moonshot Kimi 128k',value: 'moonshot-128k',baseURL: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-128k' },
+    /* ---------- Moonshot ---------- */
+    { label: 'Moonshot Kimi 8k', value: 'moonshot-8k', baseURL: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-8k' },
+    { label: 'Moonshot Kimi 32k', value: 'moonshot-32k', baseURL: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-32k' },
+    { label: 'Moonshot Kimi 128k', value: 'moonshot-128k', baseURL: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-128k' },
 
-  /* ---------- DeepSeek ---------- */
-  { label: 'DeepSeek Chat',   value: 'deepseek-chat',   baseURL: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
-  { label: 'DeepSeek Coder',  value: 'deepseek-coder',  baseURL: 'https://api.deepseek.com/v1', model: 'deepseek-coder' },
+    /* ---------- DeepSeek ---------- */
+    { label: 'DeepSeek Chat', value: 'deepseek-chat', baseURL: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
+    { label: 'DeepSeek Coder', value: 'deepseek-coder', baseURL: 'https://api.deepseek.com/v1', model: 'deepseek-coder' },
 
-  /* ---------- 通义千问(Qwen) ---------- */
-  { label: 'Qwen Turbo',   value: 'qwen-turbo',   baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-turbo' },
-  { label: 'Qwen Plus',    value: 'qwen-plus',    baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus' },
-  { label: 'Qwen Max',     value: 'qwen-max',     baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-max' },
+    /* ---------- 通义千问(Qwen) ---------- */
+    { label: 'Qwen Turbo', value: 'qwen-turbo', baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-turbo' },
+    { label: 'Qwen Plus', value: 'qwen-plus', baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus' },
+    { label: 'Qwen Max', value: 'qwen-max', baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-max' },
 
-  /* ---------- 智谱 GLM ---------- */
-  { label: 'GLM-4',      value: 'glm-4',      baseURL: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4' },
-  { label: 'GLM-4-Air',  value: 'glm-4-air',  baseURL: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-air' },
-  { label: 'GLM-4-Flash',value: 'glm-4-flash',baseURL: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash' },
+    /* ---------- 智谱 GLM ---------- */
+    { label: 'GLM-4', value: 'glm-4', baseURL: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4' },
+    { label: 'GLM-4-Air', value: 'glm-4-air', baseURL: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-air' },
+    { label: 'GLM-4-Flash', value: 'glm-4-flash', baseURL: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash' },
 
-  /* ---------- Baichuan ---------- */
-  { label: 'Baichuan 4',     value: 'baichuan-4',     baseURL: 'https://api.baichuan-ai.com/v1', model: 'Baichuan4' },
-  { label: 'Baichuan 3-Turbo',value: 'baichuan-3-turbo',baseURL: 'https://api.baichuan-ai.com/v1', model: 'Baichuan3-Turbo' },
+    /* ---------- Baichuan ---------- */
+    { label: 'Baichuan 4', value: 'baichuan-4', baseURL: 'https://api.baichuan-ai.com/v1', model: 'Baichuan4' },
+    { label: 'Baichuan 3-Turbo', value: 'baichuan-3-turbo', baseURL: 'https://api.baichuan-ai.com/v1', model: 'Baichuan3-Turbo' },
 
-  /* ---------- StepFun ---------- */
-  { label: 'StepFun 1v', value: 'step-1v', baseURL: 'https://api.stepfun.com/v1', model: 'step-1v-8k' },
-  { label: 'StepFun 1',  value: 'step-1',  baseURL: 'https://api.stepfun.com/v1', model: 'step-1-8k' },
+    /* ---------- StepFun ---------- */
+    { label: 'StepFun 1v', value: 'step-1v', baseURL: 'https://api.stepfun.com/v1', model: 'step-1v-8k' },
+    { label: 'StepFun 1', value: 'step-1', baseURL: 'https://api.stepfun.com/v1', model: 'step-1-8k' },
 
-  /* ---------- 零一万物 01.AI ---------- */
-  { label: 'Yi-Large',       value: 'yi-large',       baseURL: 'https://api.lingyiwanwu.com/v1', model: 'yi-large' },
-  { label: 'Yi-Large-Turbo', value: 'yi-large-turbo', baseURL: 'https://api.lingyiwanwu.com/v1', model: 'yi-large-turbo' },
+    /* ---------- 零一万物 01.AI ---------- */
+    { label: 'Yi-Large', value: 'yi-large', baseURL: 'https://api.lingyiwanwu.com/v1', model: 'yi-large' },
+    { label: 'Yi-Large-Turbo', value: 'yi-large-turbo', baseURL: 'https://api.lingyiwanwu.com/v1', model: 'yi-large-turbo' },
 
-  /* ---------- Custom ---------- */
-  { label: 'Custom', value: 'custom', baseURL: '', model: '' },
-];
+    /* ---------- Custom ---------- */
+    { label: 'Custom', value: 'custom', baseURL: '', model: '' },
+  ];
   const [selectedPreset, setSelectedPreset] = useState('');
 
   const scrollToBottom = () => {
@@ -178,17 +184,50 @@ const presets = [
     scrollToBottom();
   }, [messages]);
 
+  // Fetch available models from server
+  const fetchModels = useCallback(async () => {
+    try {
+      const response = await fetch('/api/chat', {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableModels(data.models || []);
+        setDefaultModel(data.defaultModel || '');
+        // Set the default model as the selected model if no model is selected
+        if (data.defaultModel && (selectedModel === 'default' || !data.models.includes(selectedModel))) {
+          setSelectedModel(data.defaultModel);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch models:', error);
+    }
+  }, [selectedModel]);
+
+  useEffect(() => {
+    fetchModels();
+  }, [fetchModels]);
+
+  // Add a refresh function that can be called manually
+  const refreshModels = () => {
+    fetchModels();
+  };
+
   if (!t) return null; // Moved loading state for translations
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || (useCustomKey && !apiKey)) return;
-    
+
     // Check if variables are filled when hasVariables is true
     if (hasVariables && variableValues) {
-      const requiredVariables = Object.keys(variableValues).filter(key => 
+      const requiredVariables = Object.keys(variableValues).filter(key =>
         !variableValues[key] || variableValues[key].toString().trim() === ''
       );
-      
+
       if (requiredVariables.length > 0) {
         toast({
           variant: "destructive",
@@ -197,14 +236,14 @@ const presets = [
         return;
       }
     }
-    
+
     setIsLoading(true);
     const newMessage = {
       role: 'user',
       content: inputMessage,
       timestamp: new Date().toISOString()
     };
-    
+
     setMessages(prev => [...prev, newMessage]);
     setInputMessage('');
 
@@ -214,7 +253,7 @@ const presets = [
       timestamp: new Date().toISOString()
     };
     setMessages(prev => [...prev, aiMessage]);
-    
+
     try {
       const response = await apiClient.chat(
         messages.concat(newMessage).map(msg => ({
@@ -259,8 +298,8 @@ const presets = [
       }
     } catch (error) {
       console.error('Error:', error);
-      const errorMessage = t?.promptDetailPage?.chatTest?.sendMessageErrorPrefix?.replace('{errorMessage}', error.message) || 
-                          `错误：${error.message || t?.promptDetailPage?.chatTest?.sendMessageErrorNetwork || '请求失败，请检查 API Key 是否正确以及网络连接是否正常'}`;
+      const errorMessage = t?.promptDetailPage?.chatTest?.sendMessageErrorPrefix?.replace('{errorMessage}', error.message) ||
+        `错误：${error.message || t?.promptDetailPage?.chatTest?.sendMessageErrorNetwork || '请求失败，请检查 API Key 是否正确以及网络连接是否正常'}`;
       setMessages(prev => {
         const newMessages = [...prev];
         const lastMessage = newMessages[newMessages.length - 1];
@@ -276,13 +315,15 @@ const presets = [
 
   const handleCopyMessage = async (content, index) => {
     try {
-      await navigator.clipboard.writeText(content);
-      setCopiedMessageId(index);
-      
-      // Reset the copied state after 2 seconds
-      setTimeout(() => {
-        setCopiedMessageId(null);
-      }, 2000);
+      const success = await copyToClipboard(content);
+      if (success) {
+        setCopiedMessageId(index);
+
+        // Reset the copied state after 2 seconds
+        setTimeout(() => {
+          setCopiedMessageId(null);
+        }, 2000);
+      }
     } catch (err) {
       console.error('Failed to copy text:', err);
     }
@@ -343,8 +384,8 @@ const presets = [
       }
       return msg;
     });
-    
-    setMessages(updatedMessages); 
+
+    setMessages(updatedMessages);
     setTempEditingContent("");
 
     // Prepare for AI response
@@ -357,7 +398,7 @@ const presets = [
 
     try {
       const response = await apiClient.chat(
-        updatedMessages.map(msg => ({role: msg.role, content: msg.content})),
+        updatedMessages.map(msg => ({ role: msg.role, content: msg.content })),
         {
           apiKey: useCustomKey ? apiKey : undefined,
           model: useCustomKey ? customModel : selectedModel,
@@ -396,8 +437,8 @@ const presets = [
       }
     } catch (error) {
       console.error('Error:', error);
-      const errorMessage = t?.promptDetailPage?.chatTest?.sendMessageErrorPrefix?.replace('{errorMessage}', error.message) || 
-                          `错误：${error.message || t?.promptDetailPage?.chatTest?.sendMessageErrorNetwork || '请求失败，请检查 API Key 是否正确以及网络连接是否正常'}`;
+      const errorMessage = t?.promptDetailPage?.chatTest?.sendMessageErrorPrefix?.replace('{errorMessage}', error.message) ||
+        `错误：${error.message || t?.promptDetailPage?.chatTest?.sendMessageErrorNetwork || '请求失败，请检查 API Key 是否正确以及网络连接是否正常'}`;
       setMessages(prev => {
         const newMessages = [...prev];
         const lastMessage = newMessages[newMessages.length - 1];
@@ -441,7 +482,7 @@ const presets = [
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            
+
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -459,9 +500,21 @@ const presets = [
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowMultiModelTest(true)}
+              className="h-8 gap-1.5 border-primary/20 hover:bg-primary/5 hover:text-primary transition-all shadow-sm ml-1"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+              <span className="text-xs font-medium">
+                {t?.promptDetailPage?.chatTest?.multiModelTest?.triggerButton || '多模型对比'}
+              </span>
+            </Button>
           </div>
         </div>
-        
+
         {showSettings && (
           <div className="mt-4 space-y-4 p-4 bg-muted/30 rounded-lg border border-border/50 animate-in fade-in-50 duration-200">
             <div className="space-y-3">
@@ -545,25 +598,41 @@ const presets = [
                 </div>
               )}
             </div>
-            
+
             <Separator className="my-2 bg-border/50" />
-            
+
             {!useCustomKey && (
               <div className="space-y-2">
-                <label className="text-sm font-medium">{t.chatTest.selectModelLabel}</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">{t.chatTest.selectModelLabel}</label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={refreshModels}
+                    className="text-xs h-7 px-2"
+                    title="刷新模型列表"
+                  >
+                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    刷新
+                  </Button>
+                </div>
                 <Select value={selectedModel} onValueChange={setSelectedModel}>
                   <SelectTrigger className="h-8 text-sm">
-                    <SelectValue />
+                    <SelectValue placeholder={defaultModel || '默认模型'} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="default">
-                          {process.env.NEXT_PUBLIC_CUSTOM_MODEL_NAME || t.chatTest.glm4FlashModelFree || '默认模型'}
-                        </SelectItem>
+                    {availableModels.map((model) => (
+                      <SelectItem key={model} value={model}>
+                        {model} {model === defaultModel ? '(默认)' : ''}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
             )}
-            
+
             <div className="space-y-2">
               <label className="text-sm font-medium flex items-center gap-1">
                 {t.chatTest.modelParametersLabel}
@@ -705,7 +774,7 @@ const presets = [
                 </p>
               </div>
             )}
-            
+
             {messages.map((message, index) => {
               const messageId = `${message.role}-${message.timestamp}-${index}`;
               const isEditing = editingMessage && editingMessage.id === messageId;
@@ -713,9 +782,8 @@ const presets = [
               return (
                 <div
                   key={messageId}
-                  className={`flex flex-col group animate-in slide-in-from-${message.role === 'user' ? 'right' : 'left'}-10 duration-300 ${
-                    message.role === 'user' ? 'items-end' : 'items-start'
-                  }`}
+                  className={`flex flex-col group animate-in slide-in-from-${message.role === 'user' ? 'right' : 'left'}-10 duration-300 ${message.role === 'user' ? 'items-end' : 'items-start'
+                    }`}
                 >
                   <div className="max-w-[80%] space-y-1.5">
                     <div className={`flex items-center gap-2 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -771,13 +839,12 @@ const presets = [
                       </div>
                     ) : (
                       <div
-                        className={`rounded-lg p-3 ${
-                          message.role === 'user'
-                            ? 'bg-primary text-primary-foreground'
-                            : message.content
+                        className={`rounded-lg p-3 ${message.role === 'user'
+                          ? 'bg-primary text-primary-foreground'
+                          : message.content
                             ? 'bg-muted/50 border border-border/30'
                             : 'bg-muted/30 border border-border/20'
-                        }`}
+                          }`}
                       >
                         {message.role === 'assistant' && !message.content ? (
                           <div className="flex items-center space-x-2 h-6">
@@ -860,7 +927,7 @@ const presets = [
             <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
-        
+
         <div className="shrink-0 p-4 border-t bg-background/80 backdrop-blur-sm">
           <div className="flex gap-2 items-end">
             <Textarea
@@ -895,6 +962,20 @@ const presets = [
           </p>
         </div>
       </CardContent>
+
+      <MultiModelTestModal
+        open={showMultiModelTest}
+        onOpenChange={setShowMultiModelTest}
+        prompt={prompt}
+        variableValues={variableValues}
+        availableModels={availableModels}
+        sharedParams={{
+          temperature,
+          maxTokens,
+          topP
+        }}
+        t={t}
+      />
     </Card>
   );
 }

@@ -2,13 +2,24 @@ import { NextResponse } from 'next/server'
 import { requireUserId } from '@/lib/auth.js'
 import { resolveTeamContext } from '@/lib/team-request.js'
 import { handleApiError } from '@/lib/handle-api-error.js'
-import { getUserList } from '@/lib/local-auth/user-service.js'
+import { getUserList } from '@/lib/user-service.js'
 import { generateUUID } from '@/lib/utils'
 
-function applyPromptFilters(query, { teamId, userId, tag, search }) {
-  const baseQuery = teamId
-    ? query.eq('team_id', teamId)
-    : query.or(`created_by.eq.${userId},user_id.eq.${userId}`)
+function applyPromptFilters(query, { teamId, userId, tag, search, scope }) {
+  let baseQuery
+
+  if (scope === 'personal') {
+    // Explicitly get personal prompts only
+    baseQuery = query.is('team_id', null).eq('created_by', userId)
+  } else if (scope === 'team' && teamId) {
+    // Explicitly get team prompts only
+    baseQuery = query.eq('team_id', teamId)
+  } else {
+    // Legacy behavior - maintain backward compatibility
+    baseQuery = teamId
+      ? query.eq('team_id', teamId)
+      : query.or(`created_by.eq.${userId},user_id.eq.${userId}`)
+  }
 
   let filteredQuery = baseQuery
 
@@ -38,11 +49,28 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url)
     const tag = searchParams.get('tag')
     const search = searchParams.get('search')
+    const scope = searchParams.get('scope') // 'personal', 'team', or undefined
     const page = parseInt(searchParams.get('page') || '1', 10)
     const limit = parseInt(searchParams.get('limit') || '10', 10)
     const offset = (page - 1) * limit
 
-    const filters = { teamId, userId, tag, search }
+    // Validate scope parameter
+    if (scope && !['personal', 'team'].includes(scope)) {
+      return NextResponse.json(
+        { error: 'Invalid scope parameter. Must be "personal" or "team"' },
+        { status: 400 }
+      )
+    }
+
+    // If scope is 'team', ensure teamId is provided
+    if (scope === 'team' && !teamId) {
+      return NextResponse.json(
+        { error: 'Team scope requires a valid team context' },
+        { status: 400 }
+      )
+    }
+
+    const filters = { teamId, userId, tag, search, scope }
 
     const dataQuery = applyPromptFilters(
       supabase
@@ -71,16 +99,31 @@ export async function GET(request) {
     }
 
     let prompts = promptsResult.data || []
-    
+
+    // 按 prompt_id 分组，只保留最新版本
+    const latestByPromptId = {}
+    for (const prompt of prompts) {
+      const pid = prompt.prompt_id
+      if (pid) {
+        if (!latestByPromptId[pid] || new Date(prompt.created_at) > new Date(latestByPromptId[pid].created_at)) {
+          latestByPromptId[pid] = prompt
+        }
+      } else {
+        // 没有 prompt_id 的旧数据，按原样保留
+        latestByPromptId[prompt.id] = prompt
+      }
+    }
+    prompts = Object.values(latestByPromptId)
+
     // Enrich prompts with creator info if possible
     if (prompts.length > 0) {
       const userIds = Array.from(new Set(prompts.map(p => p.created_by).filter(Boolean)))
-      
+
       if (userIds.length > 0) {
         try {
           const users = await getUserList(userIds)
           const userMap = new Map()
-          
+
           users.forEach(user => {
             userMap.set(user.id, {
               id: user.id,
@@ -134,6 +177,40 @@ export async function POST(request) {
     const data = await request.json()
     const timestamp = new Date().toISOString()
 
+    // Check for duplicate title within the team context
+    const titleCheckQuery = targetTeamId
+      ? supabase
+        .from('prompts')
+        .select('id')
+        .eq('team_id', targetTeamId)
+        .eq('title', data.title)
+        .single()
+      : supabase
+        .from('prompts')
+        .select('id')
+        .is('team_id', null)
+        .eq('created_by', userId)
+        .eq('title', data.title)
+        .single()
+
+    const { data: existingPrompt, error: checkError } = await titleCheckQuery
+
+    if (checkError && checkError.code !== 'PGRST116') {
+      // PGRST116 is "not found" which is what we want
+      throw checkError
+    }
+
+    if (existingPrompt) {
+      return NextResponse.json(
+        {
+          error: targetTeamId
+            ? 'A prompt with this title already exists in this team'
+            : 'A prompt with this title already exists in your personal collection'
+        },
+        { status: 409 }
+      )
+    }
+
     const promptPayload = {
       id: generateUUID(),
       team_id: targetTeamId,
@@ -158,6 +235,17 @@ export async function POST(request) {
       .single()
 
     if (error) {
+      // Handle unique constraint violation
+      if (error.code === '23505') {
+        return NextResponse.json(
+          {
+            error: targetTeamId
+              ? 'A prompt with this title already exists in this team'
+              : 'A prompt with this title already exists in your personal collection'
+          },
+          { status: 409 }
+        )
+      }
       throw error
     }
 

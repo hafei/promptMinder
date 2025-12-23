@@ -30,6 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import TeamApiKeys from "@/components/team-api-keys";
 import {
   Loader2,
   Plus,
@@ -40,6 +41,7 @@ import {
   ArrowRightLeft,
   Trash2,
   Mail,
+  Key,
 } from "lucide-react";
 
 export default function TeamsPage() {
@@ -158,7 +160,7 @@ export default function TeamsPage() {
   const [teamDetails, setTeamDetails] = useState(null);
   const [membersLoading, setMembersLoading] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [inviteForm, setInviteForm] = useState({ username: "", role: "member" });
+  const [inviteForm, setInviteForm] = useState({ email: "", role: "member" });
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState({ name: "", description: "" });
   const [transferOpen, setTransferOpen] = useState(false);
@@ -202,7 +204,7 @@ export default function TeamsPage() {
       .then((data) => {
         if (mounted && data?.maxTeamsPerUser) setMaxTeams(Number(data.maxTeamsPerUser))
       })
-      .catch(() => {})
+      .catch(() => { })
     return () => { mounted = false }
   }, [])
 
@@ -237,17 +239,17 @@ export default function TeamsPage() {
         throw new Error(payload?.error || safeT.teamsPage.loadTeamError);
       }
       const payload = await response.json();
-      
+
       // 验证数据完整性
       if (!payload.team || typeof payload.team !== 'object') {
         throw new Error(safeT.teamsPage.teamDataFormatError);
       }
-      
+
       // 确保members数组存在
       if (!Array.isArray(payload.members)) {
         payload.members = [];
       }
-      
+
       setTeamDetails(payload);
       setEditForm({
         name: payload.team.name || "",
@@ -267,10 +269,10 @@ export default function TeamsPage() {
   };
 
   const handleInviteMember = async () => {
-    if (!inviteForm.username || !inviteForm.username.trim()) {
+    if (!inviteForm.email || !inviteForm.email.trim()) {
       toast({
         variant: "destructive",
-        description: safeT.teamsPage.inviteEmailRequired,
+        description: "请输入邮箱地址",
       });
       return;
     }
@@ -282,7 +284,7 @@ export default function TeamsPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          username: inviteForm.username.trim(),
+          email: inviteForm.email.trim(),
           role: inviteForm.role,
         }),
       });
@@ -295,7 +297,7 @@ export default function TeamsPage() {
       toast({
         description: safeT.teamsPage.inviteSent,
       });
-      setInviteForm({ username: "", role: "member" });
+      setInviteForm({ email: "", role: "member" });
       setInviteOpen(false);
       refresh();
       setRefreshKey((prev) => prev + 1);
@@ -550,464 +552,471 @@ export default function TeamsPage() {
         </div>
 
         <Card className="shadow-lg border-0 bg-card/95 backdrop-blur-sm transition-all duration-300 hover:shadow-xl">
-        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <CardTitle className="text-2xl">
-              {activeTeam ? activeTeam.name : safeT.teamsPage.noTeamSelected}
-            </CardTitle>
-            {activeTeam && (
-              <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                <span>{safeT.teamsPage.role}：{ROLE_LABELS[activeMembership?.role] || safeT.teamsPage.unknownRole}</span>
-                {/* <span>团队 ID：{activeTeam.id}</span> */}
-                {activeTeam.is_personal && <Badge variant="secondary">{safeT.teamsPage.personalSpace}</Badge>}
-              </div>
-            )}
-          </div>
-          <div className="flex flex-col gap-2 sm:items-end">
-            <Select
-              value={activeTeamId || undefined}
-              onValueChange={selectTeam}
-              disabled={teamLoading || teams.length === 0}
-            >
-              <SelectTrigger className="w-[240px]">
-                <SelectValue placeholder={safeT.teamsPage.selectTeam} />
-              </SelectTrigger>
-              <SelectContent>
-                {teams.map((membership) => (
-                  <SelectItem key={membership.team.id} value={membership.team.id}>
-                    {membership.team.name}{" "}
-                    {membership.status === "pending" ? safeT.teamsPage.pending : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {!activeTeam && teams.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                {safeT.teamsPage.noTeamsMessage}
-              </p>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {membersLoading && !teamDetails ? (
-            <div className="space-y-6">
-              <div className="grid gap-4 sm:grid-cols-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="rounded-lg border p-4 space-y-2">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-6 w-16" />
-                  </div>
-                ))}
-              </div>
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-16 w-full" />
-              </div>
-            </div>
-          ) : teamDetails ? (
-            <>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div className="rounded-xl border border-border/50 bg-gradient-to-br from-primary/5 to-transparent p-5 transition-all duration-200 hover:shadow-md hover:border-primary/30">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <div className="p-1.5 rounded-md bg-primary/10">
-                      <Shield className="h-4 w-4 text-primary" />
-                    </div>
-                    {safeT.teamsPage.owner}
-                  </div>
-                  <p className="mt-3 text-lg font-semibold truncate">
-                    {ownerDisplayName || teamDetails.team.owner_id}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-border/50 bg-gradient-to-br from-blue-500/5 to-transparent p-5 transition-all duration-200 hover:shadow-md hover:border-blue-500/30">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <div className="p-1.5 rounded-md bg-blue-500/10">
-                      <Users className="h-4 w-4 text-blue-500" />
-                    </div>
-                    {safeT.teamsPage.membersCount}
-                  </div>
-                  <p className="mt-3 text-lg font-semibold">
-                    {teamDetails.members?.filter((m) => m.status === "active").length || 0}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-border/50 bg-gradient-to-br from-amber-500/5 to-transparent p-5 transition-all duration-200 hover:shadow-md hover:border-amber-500/30">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <div className="p-1.5 rounded-md bg-amber-500/10">
-                      <Mail className="h-4 w-4 text-amber-500" />
-                    </div>
-                    {safeT.teamsPage.pendingInvites}
-                  </div>
-                  <p className="mt-3 text-lg font-semibold">
-                    {teamDetails.members?.filter((m) => m.status === "pending").length || 0}
-                  </p>
-                </div>
-              </div>
-
-              {teamDetails.team.description && (
-                <div className="rounded-lg bg-muted/30 p-4 border border-border/40">
-                  <h3 className="text-sm font-medium text-muted-foreground">{safeT.teamsPage.teamDescription}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-foreground/80">
-                    {teamDetails.team.description}
-                  </p>
+          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle className="text-2xl">
+                {activeTeam ? activeTeam.name : safeT.teamsPage.noTeamSelected}
+              </CardTitle>
+              {activeTeam && (
+                <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                  <span>{safeT.teamsPage.role}：{ROLE_LABELS[activeMembership?.role] || safeT.teamsPage.unknownRole}</span>
+                  {/* <span>团队 ID：{activeTeam.id}</span> */}
+                  {activeTeam.is_personal && <Badge variant="secondary">{safeT.teamsPage.personalSpace}</Badge>}
                 </div>
               )}
+            </div>
+            <div className="flex flex-col gap-2 sm:items-end">
+              <Select
+                value={activeTeamId || undefined}
+                onValueChange={selectTeam}
+                disabled={teamLoading || teams.length === 0}
+              >
+                <SelectTrigger className="w-[240px]">
+                  <SelectValue placeholder={safeT.teamsPage.selectTeam} />
+                </SelectTrigger>
+                <SelectContent>
+                  {teams.map((membership) => (
+                    <SelectItem key={membership.team.id} value={membership.team.id}>
+                      {membership.team.name}{" "}
+                      {membership.status === "pending" ? safeT.teamsPage.pending : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!activeTeam && teams.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  {safeT.teamsPage.noTeamsMessage}
+                </p>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {membersLoading && !teamDetails ? (
+              <div className="space-y-6">
+                <div className="grid gap-4 sm:grid-cols-3">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="rounded-lg border p-4 space-y-2">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-6 w-16" />
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              </div>
+            ) : teamDetails ? (
+              <>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="rounded-xl border border-border/50 bg-gradient-to-br from-primary/5 to-transparent p-5 transition-all duration-200 hover:shadow-md hover:border-primary/30">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="p-1.5 rounded-md bg-primary/10">
+                        <Shield className="h-4 w-4 text-primary" />
+                      </div>
+                      {safeT.teamsPage.owner}
+                    </div>
+                    <p className="mt-3 text-lg font-semibold truncate">
+                      {ownerDisplayName || teamDetails.team.owner_id}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-border/50 bg-gradient-to-br from-blue-500/5 to-transparent p-5 transition-all duration-200 hover:shadow-md hover:border-blue-500/30">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="p-1.5 rounded-md bg-blue-500/10">
+                        <Users className="h-4 w-4 text-blue-500" />
+                      </div>
+                      {safeT.teamsPage.membersCount}
+                    </div>
+                    <p className="mt-3 text-lg font-semibold">
+                      {teamDetails.members?.filter((m) => m.status === "active").length || 0}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-border/50 bg-gradient-to-br from-amber-500/5 to-transparent p-5 transition-all duration-200 hover:shadow-md hover:border-amber-500/30">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="p-1.5 rounded-md bg-amber-500/10">
+                        <Mail className="h-4 w-4 text-amber-500" />
+                      </div>
+                      {safeT.teamsPage.pendingInvites}
+                    </div>
+                    <p className="mt-3 text-lg font-semibold">
+                      {teamDetails.members?.filter((m) => m.status === "pending").length || 0}
+                    </p>
+                  </div>
+                </div>
 
-              <div className="flex flex-wrap gap-3">
-                {isManager && !isPersonalTeam && (
-                  <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
-                    <DialogTrigger asChild>
-                      <Button>
-                        <UserPlus className="mr-2 h-4 w-4" />
-                        {safeT.teamsPage.inviteMember}
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>{safeT.teamsPage.inviteMemberDialog.title}</DialogTitle>
-                        <DialogDescription>
-                          {safeT.teamsPage.inviteMemberDialog.description}
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="invite-username">{safeT.teamsPage.inviteMemberDialog.emailLabel}</Label>
-                          <Input
-                            id="invite-username"
-                            type="text"
-                            placeholder={safeT.teamsPage.inviteMemberDialog.emailPlaceholder}
-                            value={inviteForm.username}
-                            onChange={(event) =>
-                              setInviteForm((prev) => ({
-                                ...prev,
-                                username: event.target.value,
-                              }))
-                            }
-                          />
+                {teamDetails.team.description && (
+                  <div className="rounded-lg bg-muted/30 p-4 border border-border/40">
+                    <h3 className="text-sm font-medium text-muted-foreground">{safeT.teamsPage.teamDescription}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-foreground/80">
+                      {teamDetails.team.description}
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-3">
+                  {isManager && !isPersonalTeam && (
+                    <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+                      <DialogTrigger asChild>
+                        <Button>
+                          <UserPlus className="mr-2 h-4 w-4" />
+                          {safeT.teamsPage.inviteMember}
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>{safeT.teamsPage.inviteMemberDialog.title}</DialogTitle>
+                          <DialogDescription>
+                            {safeT.teamsPage.inviteMemberDialog.description}
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="invite-email">邮箱地址</Label>
+                            <Input
+                              id="invite-email"
+                              type="email"
+                              placeholder="请输入邮箱地址"
+                              value={inviteForm.email}
+                              onChange={(event) =>
+                                setInviteForm((prev) => ({
+                                  ...prev,
+                                  email: event.target.value,
+                                }))
+                              }
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="invite-role">{safeT.teamsPage.inviteMemberDialog.roleLabel}</Label>
+                            <Select
+                              value={inviteForm.role}
+                              onValueChange={(value) =>
+                                setInviteForm((prev) => ({
+                                  ...prev,
+                                  role: value,
+                                }))
+                              }
+                            >
+                              <SelectTrigger id="invite-role">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="member">{safeT.teamsPage.member}</SelectItem>
+                                <SelectItem value="admin">{safeT.teamsPage.admin}</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="invite-role">{safeT.teamsPage.inviteMemberDialog.roleLabel}</Label>
-                          <Select
-                            value={inviteForm.role}
-                            onValueChange={(value) =>
-                              setInviteForm((prev) => ({
-                                ...prev,
-                                role: value,
-                              }))
-                            }
-                          >
-                            <SelectTrigger id="invite-role">
-                              <SelectValue />
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setInviteOpen(false)}>
+                            {safeT.teamsPage.inviteMemberDialog.cancel}
+                          </Button>
+                          <Button onClick={handleInviteMember}>{safeT.teamsPage.inviteMemberDialog.sendInvite}</Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+
+                  {isManager && (
+                    <Dialog open={editOpen} onOpenChange={setEditOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="secondary">{safeT.teamsPage.editTeam}</Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>{safeT.teamsPage.editTeamDialog.title}</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="team-name">{safeT.teamsPage.editTeamDialog.teamNameLabel}</Label>
+                            <Input
+                              id="team-name"
+                              value={editForm.name}
+                              onChange={(event) =>
+                                setEditForm((prev) => ({ ...prev, name: event.target.value }))
+                              }
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="team-description">{safeT.teamsPage.editTeamDialog.teamDescriptionLabel}</Label>
+                            <Input
+                              id="team-description"
+                              value={editForm.description}
+                              onChange={(event) =>
+                                setEditForm((prev) => ({
+                                  ...prev,
+                                  description: event.target.value,
+                                }))
+                              }
+                              placeholder={safeT.teamsPage.editTeamDialog.descriptionPlaceholder}
+                            />
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setEditOpen(false)}>
+                            {safeT.teamsPage.editTeamDialog.cancel}
+                          </Button>
+                          <Button onClick={handleSaveTeam}>{safeT.teamsPage.editTeamDialog.save}</Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+
+                  {isOwner && transferableMembers.length > 0 && (
+                    <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline">
+                          <ArrowRightLeft className="mr-2 h-4 w-4" />
+                          {safeT.teamsPage.transferOwnership}
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>{safeT.teamsPage.transferOwnershipDialog.title}</DialogTitle>
+                          <DialogDescription>
+                            {safeT.teamsPage.transferOwnershipDialog.description}
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="py-4">
+                          <Label className="mb-2 block text-sm font-medium">{safeT.teamsPage.transferOwnershipDialog.selectMemberLabel}</Label>
+                          <Select value={transferTarget} onValueChange={setTransferTarget}>
+                            <SelectTrigger>
+                              <SelectValue placeholder={safeT.teamsPage.transferOwnershipDialog.selectMemberPlaceholder} />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="member">{safeT.teamsPage.member}</SelectItem>
-                              <SelectItem value="admin">{safeT.teamsPage.admin}</SelectItem>
+                              {transferableMembers.map((member) => (
+                                <SelectItem key={member.user_id || member.email} value={member.user_id || member.email}>
+                                  {formatMemberIdentifier(member)}（{ROLE_LABELS[member.role] || member.role}）
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
-                      </div>
-                      <DialogFooter>
-                        <Button variant="outline" onClick={() => setInviteOpen(false)}>
-                          {safeT.teamsPage.inviteMemberDialog.cancel}
-                        </Button>
-                        <Button onClick={handleInviteMember}>{safeT.teamsPage.inviteMemberDialog.sendInvite}</Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                )}
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setTransferOpen(false)}>
+                            {safeT.teamsPage.transferOwnershipDialog.cancel}
+                          </Button>
+                          <Button onClick={handleTransferOwnership}>{safeT.teamsPage.transferOwnershipDialog.transfer}</Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  )}
 
-                {isManager && (
-                  <Dialog open={editOpen} onOpenChange={setEditOpen}>
-                    <DialogTrigger asChild>
-                      <Button variant="secondary">{safeT.teamsPage.editTeam}</Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>{safeT.teamsPage.editTeamDialog.title}</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="team-name">{safeT.teamsPage.editTeamDialog.teamNameLabel}</Label>
+                  {isOwner && !isPersonalTeam && (
+                    <Dialog open={deleteOpen} onOpenChange={handleDeleteDialogChange}>
+                      <DialogTrigger asChild>
+                        <Button variant="destructive">
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          {safeT.teamsPage.deleteTeam}
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>{safeT.teamsPage.deleteTeamDialog.title}</DialogTitle>
+                          <DialogDescription>
+                            {safeT.teamsPage.deleteTeamDialog.description}
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-3 py-2">
+                          <p className="text-sm text-muted-foreground">
+                            {safeT.teamsPage.deleteTeamDialog.confirmLabel} <span className="font-semibold">{activeTeam?.name}</span>
+                          </p>
                           <Input
-                            id="team-name"
-                            value={editForm.name}
-                            onChange={(event) =>
-                              setEditForm((prev) => ({ ...prev, name: event.target.value }))
-                            }
+                            value={deleteConfirm}
+                            onChange={(event) => setDeleteConfirm(event.target.value)}
+                            placeholder={safeT.teamsPage.deleteTeamDialog.confirmPlaceholder}
+                            autoFocus
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="team-description">{safeT.teamsPage.editTeamDialog.teamDescriptionLabel}</Label>
-                          <Input
-                            id="team-description"
-                            value={editForm.description}
-                            onChange={(event) =>
-                              setEditForm((prev) => ({
-                                ...prev,
-                                description: event.target.value,
-                              }))
-                            }
-                            placeholder={safeT.teamsPage.editTeamDialog.descriptionPlaceholder}
-                          />
-                        </div>
-                      </div>
-                      <DialogFooter>
-                        <Button variant="outline" onClick={() => setEditOpen(false)}>
-                          {safeT.teamsPage.editTeamDialog.cancel}
-                        </Button>
-                        <Button onClick={handleSaveTeam}>{safeT.teamsPage.editTeamDialog.save}</Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                )}
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => handleDeleteDialogChange(false)} disabled={deleteLoading}>
+                            {safeT.teamsPage.deleteTeamDialog.cancel}
+                          </Button>
+                          <Button variant="destructive" onClick={handleDeleteTeam} disabled={deleteLoading}>
+                            {deleteLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {safeT.teamsPage.deleteTeamDialog.delete}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  )}
 
-                {isOwner && transferableMembers.length > 0 && (
-                  <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline">
-                        <ArrowRightLeft className="mr-2 h-4 w-4" />
-                        {safeT.teamsPage.transferOwnership}
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>{safeT.teamsPage.transferOwnershipDialog.title}</DialogTitle>
-                        <DialogDescription>
-                          {safeT.teamsPage.transferOwnershipDialog.description}
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="py-4">
-                        <Label className="mb-2 block text-sm font-medium">{safeT.teamsPage.transferOwnershipDialog.selectMemberLabel}</Label>
-                        <Select value={transferTarget} onValueChange={setTransferTarget}>
-                          <SelectTrigger>
-                            <SelectValue placeholder={safeT.teamsPage.transferOwnershipDialog.selectMemberPlaceholder} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {transferableMembers.map((member) => (
-                              <SelectItem key={member.user_id || member.email} value={member.user_id || member.email}>
-                                {formatMemberIdentifier(member)}（{ROLE_LABELS[member.role] || member.role}）
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <DialogFooter>
-                        <Button variant="outline" onClick={() => setTransferOpen(false)}>
-                          {safeT.teamsPage.transferOwnershipDialog.cancel}
-                        </Button>
-                        <Button onClick={handleTransferOwnership}>{safeT.teamsPage.transferOwnershipDialog.transfer}</Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                )}
+                  {!isPersonalTeam && (
+                    <Button variant="outline" asChild>
+                      <Link href="/teams/invites">{safeT.teamsPage.viewInvites}</Link>
+                    </Button>
+                  )}
 
-                {isOwner && !isPersonalTeam && (
-                  <Dialog open={deleteOpen} onOpenChange={handleDeleteDialogChange}>
-                    <DialogTrigger asChild>
-                      <Button variant="destructive">
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        {safeT.teamsPage.deleteTeam}
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>{safeT.teamsPage.deleteTeamDialog.title}</DialogTitle>
-                        <DialogDescription>
-                          {safeT.teamsPage.deleteTeamDialog.description}
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-3 py-2">
-                        <p className="text-sm text-muted-foreground">
-                          {safeT.teamsPage.deleteTeamDialog.confirmLabel} <span className="font-semibold">{activeTeam?.name}</span>
-                        </p>
-                        <Input
-                          value={deleteConfirm}
-                          onChange={(event) => setDeleteConfirm(event.target.value)}
-                          placeholder={safeT.teamsPage.deleteTeamDialog.confirmPlaceholder}
-                          autoFocus
-                        />
-                      </div>
-                      <DialogFooter>
-                        <Button variant="outline" onClick={() => handleDeleteDialogChange(false)} disabled={deleteLoading}>
-                          {safeT.teamsPage.deleteTeamDialog.cancel}
+                  {activeMembership && activeMembership.role !== "owner" && (
+                    <Dialog open={leaveOpen} onOpenChange={setLeaveOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="destructive">
+                          <UserMinus className="mr-2 h-4 w-4" />
+                          {safeT.teamsPage.leaveTeam}
                         </Button>
-                        <Button variant="destructive" onClick={handleDeleteTeam} disabled={deleteLoading}>
-                          {deleteLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                          {safeT.teamsPage.deleteTeamDialog.delete}
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                )}
-
-                {!isPersonalTeam && (
-                  <Button variant="outline" asChild>
-                    <Link href="/teams/invites">{safeT.teamsPage.viewInvites}</Link>
-                  </Button>
-                )}
-
-                {activeMembership && activeMembership.role !== "owner" && (
-                  <Dialog open={leaveOpen} onOpenChange={setLeaveOpen}>
-                    <DialogTrigger asChild>
-                      <Button variant="destructive">
-                        <UserMinus className="mr-2 h-4 w-4" />
-                        {safeT.teamsPage.leaveTeam}
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>{safeT.teamsPage.leaveTeamDialog.title}</DialogTitle>
-                        <DialogDescription>
-                          {safeT.teamsPage.leaveTeamDialog.description}
-                        </DialogDescription>
-                      </DialogHeader>
-                      <DialogFooter>
-                        <Button variant="outline" onClick={() => setLeaveOpen(false)} disabled={leaveLoading}>
-                          {safeT.teamsPage.leaveTeamDialog.cancel}
-                        </Button>
-                        <Button variant="destructive" onClick={handleLeaveTeam} disabled={leaveLoading}>
-                          {leaveLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                          {safeT.teamsPage.leaveTeamDialog.confirm}
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                )}
-              </div>
-            </>
-          ) : null}
-
-          {teamDetails && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold">{safeT.teamsPage.teamMembers}</h2>
-                {membersLoading && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    {safeT.teamsPage.loading}
-                  </div>
-                )}
-              </div>
-              <div className="overflow-x-auto rounded-lg border border-border/50 bg-card/50">
-                <table className="min-w-full divide-y divide-border text-sm">
-                  <thead className="bg-muted/30">
-                    <tr className="text-left text-muted-foreground">
-                      <th className="px-4 py-3 font-semibold">{safeT.teamsPage.memberColumn}</th>
-                      <th className="px-4 py-3 font-semibold">{safeT.teamsPage.role}</th>
-                      <th className="px-4 py-3 font-semibold">{safeT.teamsPage.statusColumn}</th>
-                      <th className="px-4 py-3 font-semibold">{safeT.teamsPage.joinTimeColumn}</th>
-                      <th className="px-4 py-3 font-semibold">{safeT.teamsPage.actionsColumn}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border bg-card/30">
-                    {teamDetails.members?.map((member) => (
-                      <tr key={member.user_id || member.email} className="transition-colors duration-150 hover:bg-muted/30">
-                        <td className="px-4 py-3 font-mono text-xs sm:text-sm">
-                          <div className="flex items-center gap-2">
-                            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center text-xs font-semibold">
-                              {(formatMemberIdentifier(member).charAt(0) || "?").toUpperCase()}
-                            </div>
-                            <span className="truncate max-w-[200px]">{formatMemberIdentifier(member)}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <Badge variant={member.role === "owner" ? "default" : "secondary"} className="font-medium">
-                            {ROLE_LABELS[member.role] || member.role}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 capitalize">
-                          {member.status === "active" ? (
-                            <Badge variant="outline" className="border-green-500/50 text-green-600 dark:text-green-400">{safeT.teamsPage.statusActive}</Badge>
-                          ) : member.status === "pending" ? (
-                            <Badge variant="secondary" className="border-amber-500/50 text-amber-600 dark:text-amber-400">{safeT.teamsPage.statusPending}</Badge>
-                          ) : (
-                            member.status
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground text-xs">
-                          {member.joined_at
-                            ? new Date(member.joined_at).toLocaleString()
-                            : "-"}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex flex-wrap gap-2">
-                            {member.status === "pending" && member.user_id === activeMembership?.userId && (
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                onClick={() => handleAcceptInvite(activeTeamId)}
-                              >
-                                {safeT.teamsPage.acceptInviteButton}
-                              </Button>
-                            )}
-                            {isManager &&
-                              (member.user_id && member.user_id !== activeTeam?.owner_id) &&
-                              member.status === "active" && (
-                                <>
-                                  {member.role !== "admin" && member.role !== "owner" && (
-                                    <Button
-                                      size="sm"
-                                      variant="secondary"
-                                      onClick={() =>
-                                        handleUpdateMember(member.user_id, { role: "admin" })
-                                      }
-                                    >
-                                      {safeT.teamsPage.promoteToAdmin}
-                                    </Button>
-                                  )}
-                                  {member.role === "admin" && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() =>
-                                        handleUpdateMember(member.user_id, { role: "member" })
-                                      }
-                                    >
-                                      {safeT.teamsPage.demoteToMember}
-                                    </Button>
-                                  )}
-                                </>
-                              )}
-                            {isManager && (member.user_id && member.user_id !== activeTeam?.owner_id) && (
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleRemoveMember(member.user_id)}
-                              >
-                                {safeT.teamsPage.removeButton}
-                              </Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </CardContent>
-        {!teamDetails && !membersLoading && (
-          <CardFooter className="flex flex-col items-center gap-4 py-12 bg-muted/10 rounded-b-lg">
-            {teams.length === 0 ? (
-              <>
-                <div className="text-center space-y-3">
-                  <p className="text-muted-foreground text-base">
-                    {safeT.teamsPage.noTeamsCreate}
-                  </p>
-                  <Button
-                    onClick={() => router.push("/teams/new")}
-                    className="transition-all duration-200 hover:shadow-md hover:scale-[1.02]"
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    {safeT.teamsPage.createTeamButton}
-                  </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>{safeT.teamsPage.leaveTeamDialog.title}</DialogTitle>
+                          <DialogDescription>
+                            {safeT.teamsPage.leaveTeamDialog.description}
+                          </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setLeaveOpen(false)} disabled={leaveLoading}>
+                            {safeT.teamsPage.leaveTeamDialog.cancel}
+                          </Button>
+                          <Button variant="destructive" onClick={handleLeaveTeam} disabled={leaveLoading}>
+                            {leaveLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {safeT.teamsPage.leaveTeamDialog.confirm}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  )}
                 </div>
               </>
-            ) : (
-              <p className="text-muted-foreground text-base">{safeT.teamsPage.selectTeamToView}</p>
+            ) : null}
+
+            {teamDetails && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-semibold">{safeT.teamsPage.teamMembers}</h2>
+                  {membersLoading && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      {safeT.teamsPage.loading}
+                    </div>
+                  )}
+                </div>
+                <div className="overflow-x-auto rounded-lg border border-border/50 bg-card/50">
+                  <table className="min-w-full divide-y divide-border text-sm">
+                    <thead className="bg-muted/30">
+                      <tr className="text-left text-muted-foreground">
+                        <th className="px-4 py-3 font-semibold">{safeT.teamsPage.memberColumn}</th>
+                        <th className="px-4 py-3 font-semibold">{safeT.teamsPage.role}</th>
+                        <th className="px-4 py-3 font-semibold">{safeT.teamsPage.statusColumn}</th>
+                        <th className="px-4 py-3 font-semibold">{safeT.teamsPage.joinTimeColumn}</th>
+                        <th className="px-4 py-3 font-semibold">{safeT.teamsPage.actionsColumn}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border bg-card/30">
+                      {teamDetails.members?.map((member) => (
+                        <tr key={member.user_id || member.email} className="transition-colors duration-150 hover:bg-muted/30">
+                          <td className="px-4 py-3 font-mono text-xs sm:text-sm">
+                            <div className="flex items-center gap-2">
+                              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center text-xs font-semibold">
+                                {(formatMemberIdentifier(member).charAt(0) || "?").toUpperCase()}
+                              </div>
+                              <span className="truncate max-w-[200px]">{formatMemberIdentifier(member)}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <Badge variant={member.role === "owner" ? "default" : "secondary"} className="font-medium">
+                              {ROLE_LABELS[member.role] || member.role}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3 capitalize">
+                            {member.status === "active" ? (
+                              <Badge variant="outline" className="border-green-500/50 text-green-600 dark:text-green-400">{safeT.teamsPage.statusActive}</Badge>
+                            ) : member.status === "pending" ? (
+                              <Badge variant="secondary" className="border-amber-500/50 text-amber-600 dark:text-amber-400">{safeT.teamsPage.statusPending}</Badge>
+                            ) : (
+                              member.status
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground text-xs">
+                            {member.joined_at
+                              ? new Date(member.joined_at).toLocaleString()
+                              : "-"}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex flex-wrap gap-2">
+                              {member.status === "pending" && member.user_id === activeMembership?.userId && (
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => handleAcceptInvite(activeTeamId)}
+                                >
+                                  {safeT.teamsPage.acceptInviteButton}
+                                </Button>
+                              )}
+                              {isManager &&
+                                (member.user_id && member.user_id !== activeTeam?.owner_id) &&
+                                member.status === "active" && (
+                                  <>
+                                    {member.role !== "admin" && member.role !== "owner" && (
+                                      <Button
+                                        size="sm"
+                                        variant="secondary"
+                                        onClick={() =>
+                                          handleUpdateMember(member.user_id, { role: "admin" })
+                                        }
+                                      >
+                                        {safeT.teamsPage.promoteToAdmin}
+                                      </Button>
+                                    )}
+                                    {member.role === "admin" && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() =>
+                                          handleUpdateMember(member.user_id, { role: "member" })
+                                        }
+                                      >
+                                        {safeT.teamsPage.demoteToMember}
+                                      </Button>
+                                    )}
+                                  </>
+                                )}
+                              {isManager && (member.user_id && member.user_id !== activeTeam?.owner_id) && (
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => handleRemoveMember(member.user_id)}
+                                >
+                                  {safeT.teamsPage.removeButton}
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             )}
-          </CardFooter>
-        )}
-      </Card>
+
+            {/* API Keys管理 - 只有管理员才能看到 */}
+            {isManager && (
+              <div className="mt-8 pt-8 border-t border-border/50">
+                <TeamApiKeys teamId={activeTeamId} />
+              </div>
+            )}
+          </CardContent>
+          {!teamDetails && !membersLoading && (
+            <CardFooter className="flex flex-col items-center gap-4 py-12 bg-muted/10 rounded-b-lg">
+              {teams.length === 0 ? (
+                <>
+                  <div className="text-center space-y-3">
+                    <p className="text-muted-foreground text-base">
+                      {safeT.teamsPage.noTeamsCreate}
+                    </p>
+                    <Button
+                      onClick={() => router.push("/teams/new")}
+                      className="transition-all duration-200 hover:shadow-md hover:scale-[1.02]"
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      {safeT.teamsPage.createTeamButton}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <p className="text-muted-foreground text-base">{safeT.teamsPage.selectTeamToView}</p>
+              )}
+            </CardFooter>
+          )}
+        </Card>
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import { apiClient, ApiError } from '@/lib/api-client';
 import { DEFAULTS, UI_CONFIG } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
 import { generateUUID } from '@/lib/utils';
+import { copyToClipboard } from '@/lib/clipboard';
 
 export function usePrompts(filters = {}) {
   const [prompts, setPrompts] = useState([]);
@@ -15,14 +16,14 @@ export function usePrompts(filters = {}) {
       setIsLoading(true);
       setError(null);
       const data = await apiClient.getPrompts(filters);
-      
+
       const processedPrompts = data.map(prompt => ({
         ...prompt,
         version: prompt.version || DEFAULTS.PROMPT_VERSION,
         cover_img: prompt.cover_img || DEFAULTS.COVER_IMAGE,
         tags: prompt.tags?.split(',') || []
       }));
-      
+
       setPrompts(processedPrompts);
     } catch (error) {
       console.error('Error fetching prompts:', error);
@@ -52,12 +53,12 @@ export function usePrompts(filters = {}) {
       });
 
       setPrompts(prev => [newPrompt, ...prev]);
-      
+
       toast({
         title: '创建成功',
         description: '提示词已成功创建',
       });
-      
+
       return newPrompt;
     } catch (error) {
       toast({
@@ -76,15 +77,15 @@ export function usePrompts(filters = {}) {
         updated_at: new Date().toISOString(),
       });
 
-      setPrompts(prev => 
+      setPrompts(prev =>
         prev.map(p => p.id === id ? { ...p, ...updatedPrompt } : p)
       );
-      
+
       toast({
         title: '更新成功',
         description: '提示词已成功更新',
       });
-      
+
       return updatedPrompt;
     } catch (error) {
       toast({
@@ -100,7 +101,7 @@ export function usePrompts(filters = {}) {
     try {
       await apiClient.deletePrompt(id);
       setPrompts(prev => prev.filter(p => p.id !== id));
-      
+
       toast({
         title: '删除成功',
         description: '提示词已成功删除',
@@ -119,12 +120,14 @@ export function usePrompts(filters = {}) {
     try {
       await apiClient.sharePrompt(id);
       const shareUrl = `${window.location.origin}/share/${id}`;
-      
-      await navigator.clipboard.writeText(shareUrl);
-      toast({
-        title: '分享成功',
-        description: '分享链接已复制到剪贴板',
-      });
+
+      const success = await copyToClipboard(shareUrl);
+      if (success) {
+        toast({
+          title: '分享成功',
+          description: '分享链接已复制到剪贴板',
+        });
+      }
     } catch (error) {
       toast({
         title: '分享失败',
@@ -138,12 +141,12 @@ export function usePrompts(filters = {}) {
     try {
       const newPrompt = await apiClient.copyPrompt(promptData);
       setPrompts(prev => [newPrompt, ...prev]);
-      
+
       toast({
         title: '导入成功',
         description: '提示词已导入到你的库中',
       });
-      
+
       return newPrompt;
     } catch (error) {
       toast({
@@ -155,13 +158,14 @@ export function usePrompts(filters = {}) {
     }
   }, [toast]);
 
-  // 按标题分组提示词
+  // 按 prompt_id 分组提示词（同一 prompt 的不同版本）
   const groupedPrompts = useMemo(() => {
     return prompts.reduce((acc, prompt) => {
-      if (!acc[prompt.title]) {
-        acc[prompt.title] = [];
+      const key = prompt.prompt_id;  // 使用 prompt_id 唯一标识
+      if (!acc[key]) {
+        acc[key] = [];
       }
-      acc[prompt.title].push(prompt);
+      acc[key].push(prompt);
       return acc;
     }, {});
   }, [prompts]);
@@ -198,7 +202,7 @@ export function usePromptSearch(prompts, searchQuery, selectedTags) {
     // 按搜索查询过滤
     if (debouncedQuery) {
       const query = debouncedQuery.toLowerCase();
-      filtered = filtered.filter(prompt => 
+      filtered = filtered.filter(prompt =>
         prompt.title?.toLowerCase().includes(query) ||
         prompt.description?.toLowerCase().includes(query) ||
         prompt.content?.toLowerCase().includes(query) ||
